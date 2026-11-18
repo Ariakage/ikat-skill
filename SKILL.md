@@ -46,7 +46,8 @@ renders — regenerable, never authoritative. Per source file, L0 records:
 - `exports` — public symbol names (≈ the A field, free)
 - `doc` — leading doc-comment, first paragraph (≈ the F field, free)
 - `role` — heuristic class from path: entry / route / service / store /
-  test / config / generated
+  test / config / asset / generated
+- `media` — for binaries, probed metadata (see Media and binary files)
 - `rank` — deterministic score: import in-degree × size × entry-likeness
 
 Repo inventory comes from `git ls-files -c -o --exclude-standard` (tracked +
@@ -71,12 +72,41 @@ src/prompts.ts[C9L]: F:LLM prompt contracts for the pipeline | S:Repo text is un
 - **F** responsibility (≤140) · **R** strong relations (≤10 existing paths or
   globs) · **A** public contract (≤100) · **S** un-inferable constraint
   (≤200). Line ≤400 chars.
-- Tags `[XIS]`: **X** layer `E`ntry/`C`ore/`S`upport/`I`nfra/`T`est ·
+- Tags `[XIS]`: **X** layer `E`ntry/`C`ore/`S`upport/`I`nfra/`T`est/`A`sset ·
   **I** importance 1–9 · **S** size `T`/`S`/`M`/`L`.
 - The CLI validates path existence, tag letters, R-targets, field order and
   budgets — never the truth of the claims, never the text itself.
 - Hash drift marks the entry `stale`: kept visible in the digest, excluded
   from fresh coverage. Stale beats wrong; a deleted warning does not.
+
+## Media and binary files
+
+Videos, audio, images, fonts, archives and other binaries are inventory, not
+noise — the index records what and where they are, never pretending to have
+read their contents.
+
+- **Probe is deterministic and free.** `index.json`'s `media` record per
+  binary: format (magic bytes, extension fallback), size, plus what local
+  tools can measure — `ffprobe` gives duration/codec/resolution for video and
+  audio; PNG/JPEG/GIF headers give image dimensions with zero deps. Missing
+  tools degrade the record to format+size, and the digest says which.
+- **A sidecar is free meaning.** `<name>.md` / `<name>.txt` beside a media
+  file supplies its F; `.srt`/`.vtt` beside a video is noted as an available
+  transcript.
+- **Content understanding is delegated, never re-implemented.** When a
+  question needs what's *inside* a media file, ikat says so and hands off:
+  video/audio → the `video-storyboard` skill (probe → storyboard sheets +
+  timestamped index → zoom; invoke per its SKILL.md); images → the agent's
+  own file-read/vision; PDFs/docs → the host's text tools. ikat indexes
+  media; it does not watch, OCR or transcribe it.
+- **ikat file on a binary** prints the probe card and the handoff hint —
+  never a byte dump.
+- **Entries still apply.** `S` carries what probing can't: `intro.mp4` →
+  `S:Re-encode before release; shows deprecated UI`. Media files rank in
+  enrich only by authored importance, never by byte size.
+- **Honesty:** a media line states what was measured ("video/mp4, 8.2 MB,
+  01:23, transcript: .srt present") — claiming its content requires having
+  run the delegated skill. Unwatched is unwatched.
 
 ## Workflow 1 — init (automatic or manual)
 
@@ -173,6 +203,7 @@ ikat refs <path>      # imports + reverse importers       (--json)
 ikat enrich [path]    # entry work queue (--limit n, --only-stale, --json)
 ikat put <path>       # validate + store one FRAS line (stdin or --entry)
 ikat diagram [path]   # --draft writes baseline · default prints current
+ikat doctor           # env probe: node, ffprobe, mmdc, skill integrations
 ikat uninit [path]    # remove .ikat/ and the marker block
 ```
 
@@ -188,6 +219,9 @@ run `ikat init`) · 2 misuse.
   job; a pre-commit hook is the `--tracked` refresh story. Raise before
   building either.
 - Not a truth oracle: validation guarantees the contract, not the claims.
+- Not a media reader: ikat probes binaries' metadata but delegates content
+  understanding to content skills (video-storyboard et al.) and the host's
+  own readers. It never embeds, transcodes or summarizes media itself.
 - Deferred, not forgotten: tree-sitter extraction, symbol graph, DB schema
   indexing, single-binary packaging.
 
