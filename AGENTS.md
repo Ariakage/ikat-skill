@@ -21,9 +21,14 @@ architecture diagram of the repo.
   graph, entry contracts); the agent authors and reasons (semantic entries,
   orientation, diagram composition). The CLI never infers architecture or
   edits authored text; the agent never writes unchecked index bytes.
-- **Index model**: L0 deterministic skeleton (instant, zero token cost) plus
-  L1 agent-authored FRAS entries (semantic, hash-bound, amortized across
-  tasks). Default local `.ikat/`; `--tracked` makes the index Git-versioned.
+- **Index model**: L0 deterministic skeleton (instant, zero token cost —
+  extracts imports, exports, doc-comments, roles and rank) plus L1
+  agent-authored FRAS overlays (only the delta determinism can't produce —
+  mostly the S field — hash-bound, amortized across tasks). Default local
+  `.ikat/`; `--tracked` makes the index Git-versioned.
+- **Toolchain**: TypeScript, zero-dependency core (`node:util` `parseArgs`),
+  Node ≥ 20, single-file ESM bundle. No model calls inside the CLI, no native
+  modules — it must install wherever an agent runs.
 - **Status**: `SKILL.md` is the agreed workflow draft; the CLI is not yet
   implemented. Treat command names and index formats there as the contract to
   build against, flagging deviations back to the user.
