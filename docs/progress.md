@@ -1,11 +1,11 @@
 # ikat — Progress
 
-Current phase: **spec converged, implementation not started**.
+Current phase: **M1 done — L0 skeleton works end-to-end**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
 
-- [ ] **M1 — skeleton end-to-end**: `init` + inventory + extraction +
+- [x] **M1 — skeleton end-to-end**: `init` + inventory + extraction +
   `index.json` + `digest.md` render + AGENTS.md marker. L0 usable.
 - [ ] **M2 — drill-down + drift**: `file` / `refs` / `status` / `sync`,
   hash-based staleness.
@@ -13,7 +13,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   merged digest render.
 - [ ] **M4 — diagram**: `diagram --draft` baseline + marker/docs polish.
 - [ ] **M5 — formats + hardening**: media probe chain, markitdown pipeline,
-  `--tracked` mode, doctor, tests.
+  doctor, tests.
 
 ## Decision log
 
@@ -25,6 +25,8 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `8cbbf42` | Entries converge to overlays (author the delta, mostly S); zero-dep toolchain; deferred list |
 | 2026-11-19 | `bd3af3` | Media strategy: probe + delegate to content skills (video-storyboard model) |
 | 2026-11-19 | `ef1948a` | Probe fallback chain; markitdown lazy document pipeline |
+| 2026-11-19 | `def22a5` | Design + progress docs recorded |
+| 2026-11-19 | (pending) | M1: CLI scaffold + init/status/digest/uninit; package `ikat-cli` |
 
 ## Confirmed (do not re-litigate)
 
@@ -34,18 +36,36 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 - Zero-dependency core: Node ≥ 20, `parseArgs`, ESM single-file bundle
 - No model calls inside the CLI; CLI never edits authored text
 - Media = probe + delegate; documents = markitdown → cached md → text flow
+- Package name: **`ikat-cli`** on npm (`ikat` was taken); bin is `ikat`,
+  so `npx ikat-cli@latest init` works
 
-## Open (before/during implementation)
+## Implemented in M1
 
-- Package name availability on npm (`ikat` may be taken — check first)
-- Import-extraction language table for v1 (regex per language; ts/js/py/go/
-  rs first)
-- Exact `index.json` / `entries.txt` schemas
-- Rank formula weights; enrich queue ordering
-- Whether `.devin/` or root placement for skill development here (repo IS
-  the skill — SKILL.md at root is deliberate)
+- `ikat init [path] [--tracked] [--no-marker] [-q]` — inventory via
+  `git ls-files` (fallback: ignore-list walk) → per-file classify/hash →
+  extraction (imports/exports/doc-comment) → specifier resolution →
+  rank → `.ikat/{index.json,digest.md,meta.json}` → AGENTS.md marker →
+  `.git/info/exclude` (worktree-aware).
+- `ikat status [path]` — index freshness vs `HEAD` (exit 2 when stale),
+  file counts, digest size.
+- `ikat digest` / `ikat uninit` — print digest; full clean removal.
+- Language table v1: ts, js, py, go, rs, java, c/c++, rb, php, swift, kt,
+  cs, sh. Role classifier: entry/route/service/store/test/config/asset/
+  document/generated/src.
+- Rank formula v1: `inDegree*3 + log2(size+1)/4 (+4 entry, +0.5 doc,
+  ×0.25 low-value roles)`.
+- Verified: 44 vitest cases, `tsc --noEmit`, biome clean, tsup build;
+  dogfooded on a fixture repo and on this repo itself.
+
+## Open (implementation-time decisions)
+
+- Exact `entries.txt` schema and FRAS field budgets (M3)
+- Enrich queue ordering beyond rank (M3)
+- tsconfig `paths` / babel alias resolution for JS/TS imports (M2+?)
+- Monorepo/multi-root behavior; max-repo performance tuning
+- Mermaid draft layout strategy (M4)
 
 ## Next action
 
-Scaffold `package.json` + `tsconfig` + `src/cli.ts` with `init`/`status`
-stubs (M1), if the user approves.
+M2: `ikat file <path>` metadata card + bounded excerpts, `ikat refs <path>`
+in/out edges, `ikat sync` incremental hash-drift re-index.

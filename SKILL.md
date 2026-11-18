@@ -127,7 +127,7 @@ read their contents.
 
 **Agent auto-init:** on entering a repo, check for `.ikat/digest.md`.
 
-- Missing → `npx ikat@latest init` (no global install; `--yes` when
+- Missing → `npx ikat-cli@latest init` (no global install; `--yes` when
   non-interactive). If `npx` is unavailable, fall back to the repo's own
   toolchain per README.
 - Present → compare the digest header's `index:` sha to `git rev-parse HEAD`;
@@ -145,7 +145,7 @@ run `ikat sync` if it looks stale. Remove .ikat/ and this block to opt out.
 <!-- /ikat:index -->
 ```
 
-**User manual init:** `npm i -g ikat` once, then `ikat init` per project.
+**User manual init:** `npm i -g ikat-cli` once, then `ikat init` per project.
 
 ## Workflow 2 — orient
 

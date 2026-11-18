@@ -52,7 +52,7 @@ index bytes.
    edits per gitdiagram's evidence rules; output is `.mmd` source only —
    chat renders it.
 7. **Zero-dependency core.** Node ≥ 20, `node:util` `parseArgs`, single-file
-   ESM bundle. Must install wherever an agent runs (`npx ikat@latest init`).
+   ESM bundle. Must install wherever an agent runs (`npx ikat-cli@latest init`).
 8. **No daemon, no MCP, no remote** (v1). Staleness via digest-header sha +
    `status`/`sync`; pre-commit hook is the `--tracked` refresh story.
 
@@ -77,3 +77,12 @@ DB schema indexing · single-binary packaging.
 - FRAS budgets are draft values — tune on real repos.
 - Tag dictionary is a starter set; extensions via project meta later.
 - enrich priority formula (rank weights).
+
+Resolved during M1:
+
+- npm package: `ikat` taken → published name **`ikat-cli`**, bin stays `ikat`.
+- Bundler/lint/test: tsup (single ESM bundle) + biome + vitest; pnpm.
+- Extraction table v1: regex imports/exports/doc-comments for ts, js, py,
+  go, rs, java, c/c++, rb, php, swift, kt, cs, sh — no tree-sitter yet.
+- `index.json` v1: flat `files[]` with role/lang/hash/imports/external/
+  exports/doc/rank + `meta.json` freshness record; format version `1`.

@@ -29,19 +29,34 @@ architecture diagram of the repo.
 - **Toolchain**: TypeScript, zero-dependency core (`node:util` `parseArgs`),
   Node ≥ 20, single-file ESM bundle. No model calls inside the CLI, no native
   modules — it must install wherever an agent runs.
-- **Status**: `SKILL.md` is the agreed workflow draft; the CLI is not yet
-  implemented. Treat command names and index formats there as the contract to
-  build against, flagging deviations back to the user.
+- **Status**: M1 implemented — `init`/`status`/`digest`/`uninit` produce a
+  deterministic L0 index (`.ikat/index.json` + `digest.md` + `meta.json`),
+  AGENTS.md marker, and `.git/info/exclude` wiring. Entry/diagram/probe
+  layers are not built yet; `SKILL.md` remains the contract, flag deviations.
 
-Layout (planned — files that don't exist yet are intent, not fact):
+Layout:
 
 ```
 SKILL.md           # skill entry point: triggers, workflows, CLI contract
 AGENTS.md          # this file — contributor conventions
 docs/design.md     # confirmed decisions + reference analysis + open items
 docs/progress.md   # milestone tracker + decision log — keep current
-src/               # TypeScript CLI source (pending)
+src/cli.ts         # arg dispatch (parseArgs, zero deps)
+src/commands/      # init / status / digest / uninit
+src/scan.ts        # inventory, role classify, purpose detection
+src/langs.ts       # per-language extraction table (regex, v1)
+src/extract.ts     # doc-comment/import/export extraction + spec resolution
+src/rank.ts        # deterministic core ranking
+src/store.ts       # index/meta io, hashing, format version
+src/digest.ts      # pruned tree + digest.md renderer
+src/marker.ts      # AGENTS.md marker + .git/info/exclude (worktree-aware)
+src/git.ts         # git plumbing helpers
+test/              # vitest unit tests
 ```
+
+Checks: `pnpm typecheck`, `pnpm lint` (biome), `pnpm test` (vitest),
+`pnpm build` (tsup → single ESM bundle `dist/cli.js`). Run `pnpm ikat` or
+`node dist/cli.js` for the dev CLI.
 
 ## Getting started
 
@@ -106,3 +121,8 @@ When reporting finished work, briefly state:
 - what remains unresolved.
 
 Reference code or docs with locatable paths.
+
+<!-- ikat:index -->
+This repo has an ikat index: read .ikat/digest.md for architecture context.
+Run `ikat init` to regenerate it; remove .ikat/ and this block to opt out.
+<!-- /ikat:index -->
