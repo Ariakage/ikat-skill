@@ -72,7 +72,7 @@ export function renderTree(paths: string[]): string[] {
 }
 
 const fmtImport = (f: FileEntry): string =>
-  f.imports.length ? f.imports.join(", ") : "·";
+  f.imports.length ? f.imports.join(", ") : "(none)";
 
 const ENTRIES_CAP = 15;
 
