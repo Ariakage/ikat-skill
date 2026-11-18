@@ -3,12 +3,30 @@
   "version": "0.1.0",
   "description": "Low-token project orientation for coding agents: deterministic repo index + agent-authored entries",
   "license": "MIT",
+  "author": "ariakage <ariakage233@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ariakage/ikat-skill.git"
+  },
+  "homepage": "https://github.com/Ariakage/ikat-skill#readme",
+  "bugs": "https://github.com/Ariakage/ikat-skill/issues",
+  "keywords": [
+    "code-index",
+    "repository-map",
+    "ai-agent",
+    "llm-context",
+    "codebase",
+    "mermaid",
+    "static-analysis",
+    "cli"
+  ],
   "type": "module",
   "bin": {
     "ikat": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "SKILL.md"
   ],
   "engines": {
     "node": ">=20"
