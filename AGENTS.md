@@ -17,9 +17,13 @@ architecture diagram of the repo.
 - **Design constraint**: outputs are consumed by agents, so they must be
   compact. Prefer terse, structured formats over prose; token cost is a
   first-class requirement, not an afterthought.
-- **Design split**: the CLI measures (tree, ranking, import graph); the agent
-  reasons (orientation, diagram composition). Keep it that way — no model
-  calls inside the CLI.
+- **Design split**: the CLI measures and validates (tree, ranking, import
+  graph, entry contracts); the agent authors and reasons (semantic entries,
+  orientation, diagram composition). The CLI never infers architecture or
+  edits authored text; the agent never writes unchecked index bytes.
+- **Index model**: L0 deterministic skeleton (instant, zero token cost) plus
+  L1 agent-authored FRAS entries (semantic, hash-bound, amortized across
+  tasks). Default local `.ikat/`; `--tracked` makes the index Git-versioned.
 - **Status**: `SKILL.md` is the agreed workflow draft; the CLI is not yet
   implemented. Treat command names and index formats there as the contract to
   build against, flagging deviations back to the user.
