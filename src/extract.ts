@@ -56,7 +56,7 @@ export function extractDoc(text: string, style: DocStyle): string | null {
       if (t.startsWith("//")) {
         const buf: string[] = [];
         while (i < lines.length && lines[i]!.trim().startsWith("//")) {
-          buf.push(lines[i]!.trim().replace(/^\/\/+\s?/, ""));
+          buf.push(lines[i]!.trim().replace(/^\/\/+[!/]?\s?/, ""));
           i++;
         }
         const cleaned = buf.join("\n").trim();
@@ -220,7 +220,12 @@ const pkgName = (spec: string): string =>
     ? spec.split("/").slice(0, 2).join("/")
     : spec.split("/")[0]!;
 
-type Resolver = (spec: string, fromDir: string, ctx: ResolveCtx) => Resolved;
+type Resolver = (
+  spec: string,
+  fromDir: string,
+  ctx: ResolveCtx,
+  fromFile?: string,
+) => Resolved;
 
 const resolveJsLike = (exts: string[]): Resolver => {
   return (spec, fromDir, ctx) => {
@@ -275,31 +280,77 @@ const resolveGo: Resolver = (spec, _fromDir, ctx) => {
   return { external: first.includes(".") ? spec : first };
 };
 
-const resolveRs: Resolver = (spec, fromDir, ctx) => {
-  if (["std", "core", "alloc", "crate", "self", "super"].includes(spec))
-    return { external: spec };
-  const s = spec
-    .replace(/^(crate|self|super)::/, (m) =>
-      m === "crate::"
-        ? "src/"
-        : m === "self::"
-          ? `${fromDir}/`
-          : `${fromDir}/../`,
-    )
-    .replace(/::/g, "/");
-  const stem = norm(s);
+/** Deepest ancestor dir containing lib.rs/main.rs = the crate root for
+ * `crate::` paths (workspace-aware; src/ fallback for exotic layouts). */
+const crateRoot = (fromDir: string, ctx: ResolveCtx): string => {
+  const parts = fromDir.split("/");
+  for (let i = parts.length; i > 0; i--) {
+    const d = parts.slice(0, i).join("/");
+    if (ctx.fileSet.has(`${d}/lib.rs`) || ctx.fileSet.has(`${d}/main.rs`))
+      return d;
+  }
+  return "src";
+};
+
+const resolveRs: Resolver = (spec, fromDir, ctx, fromFile) => {
+  // `use a::{b, c}` captures "a::" — drop the brace tail; `mod x;` → "x"
+  const segs = spec.replace(/:+$/, "").split("::").filter(Boolean);
+  if (!segs.length) return { external: spec };
+  const head = segs[0]!;
+  if (["std", "core", "alloc"].includes(head)) return { external: head };
+
+  // Rust 2018 layout: `foo.rs` + sibling `foo/` dir — self:: and bare
+  // paths look into the stem dir (credentials.rs → credentials/file.rs)
+  const stem = fromFile ? base(fromFile).replace(/\.rs$/, "") : "";
+  const selfDir =
+    stem && !["mod", "lib", "main"].includes(stem)
+      ? `${fromDir}/${stem}`
+      : fromDir;
+
+  let anchor = "";
+  let rest = segs;
+  if (head === "crate") {
+    anchor = crateRoot(fromDir, ctx);
+    rest = segs.slice(1);
+  } else if (head === "self") {
+    anchor = selfDir;
+    rest = segs.slice(1);
+  } else if (head === "super") {
+    anchor = dirname(fromDir);
+    rest = segs.slice(1);
+  }
+  while (rest[0] === "super") {
+    anchor = dirname(anchor) || anchor;
+    rest = rest.slice(1);
+  }
+  if (anchor && !rest.length) {
+    // `use crate::{..}` / `use super::{..}` — symbols of the root module
+    const rootFile = hit(ctx, [
+      `${anchor}/lib.rs`,
+      `${anchor}/main.rs`,
+      `${anchor}/mod.rs`,
+    ]);
+    if (rootFile) return { internal: rootFile };
+  }
+  const p = rest.join("/");
   const found = hit(ctx, [
-    stem + ".rs",
-    stem + "/mod.rs",
-    `${fromDir}/${stem}.rs`,
-    `${fromDir}/${stem}/mod.rs`,
+    ...(anchor && p ? [`${anchor}/${p}.rs`, `${anchor}/${p}/mod.rs`] : []),
+    ...(anchor && rest.length
+      ? [`${anchor}/${rest[0]}.rs`, `${anchor}/${rest[0]}/mod.rs`]
+      : []),
+    // bare `use foo::` / `mod foo;` — stem-dir child or sibling
+    `${selfDir}/${p}.rs`,
+    `${selfDir}/${p}/mod.rs`,
+    `${selfDir}/${head}.rs`,
+    `${selfDir}/${head}/mod.rs`,
+    `${fromDir}/${head}.rs`,
+    `${fromDir}/${head}/mod.rs`,
   ]);
   if (found) return { internal: found };
-  if (ctx.fileSet.has(`${fromDir}/${spec}.rs`))
-    return { internal: `${fromDir}/${spec}.rs` };
-  if (ctx.fileSet.has(`${fromDir}/${spec}/mod.rs`))
-    return { internal: `${fromDir}/${spec}/mod.rs` };
-  return { external: spec.split("::")[0]! };
+  // crate::/self::/super:: are definitionally internal — an unresolved
+  // one is our miss, not an external package; drop rather than misreport
+  if (["crate", "self", "super"].includes(head)) return null;
+  return { external: head };
 };
 
 const resolveC: Resolver = (spec, fromDir, ctx) => {
@@ -373,7 +424,8 @@ export function resolveSpec(
   spec: string,
   fromDir: string,
   ctx: ResolveCtx,
+  fromFile?: string,
 ): Resolved {
   const r = RESOLVERS[langName];
-  return r ? r(spec, fromDir, ctx) : { external: spec };
+  return r ? r(spec, fromDir, ctx, fromFile) : { external: spec };
 }

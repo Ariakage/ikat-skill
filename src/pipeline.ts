@@ -114,7 +114,7 @@ export function resolveAllEdges(entries: FileEntry[]): void {
     const imports = new Set<string>();
     const external = new Set<string>();
     for (const spec of e.specs) {
-      const r = resolveSpec(e.lang ?? "", spec, dir, ctx);
+      const r = resolveSpec(e.lang ?? "", spec, dir, ctx, e.path);
       if (r && "internal" in r) imports.add(r.internal);
       else if (r && "external" in r) external.add(r.external);
     }

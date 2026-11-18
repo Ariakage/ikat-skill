@@ -79,7 +79,7 @@ export const LANGS: LangSpec[] = [
     name: "rs",
     exts: [".rs"],
     imports: [
-      { re: /^\s*use\s+([\w:]+)/gm },
+      { re: /^\s*(?:pub(?:\([^)]*\))?\s+)?use\s+([\w:]+)/gm },
       { re: /^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+(\w+)\s*;/gm },
       { re: /^\s*extern\s+crate\s+(\w+)/gm },
     ],

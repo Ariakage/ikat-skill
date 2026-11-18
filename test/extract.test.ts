@@ -85,10 +85,15 @@ import (
   });
   it("extracts rust use/mod", () => {
     const specs = extractImportSpecs(
-      "use crate::core::x;\nmod helper;\nuse std::io;\n",
+      "use crate::core::x;\nmod helper;\npub use other::T;\nuse std::io;\n",
       rs,
     );
-    expect(specs.sort()).toEqual(["crate::core::x", "helper", "std::io"]);
+    expect(specs.sort()).toEqual([
+      "crate::core::x",
+      "helper",
+      "other::T",
+      "std::io",
+    ]);
   });
 });
 
@@ -171,6 +176,51 @@ describe("resolveSpec", () => {
     expect(resolveSpec("rs", "std::io", "src", ctx)).toEqual({
       external: "std",
     });
+  });
+  it("resolves rust crate/self/super anchors in a workspace", () => {
+    const ws = buildResolveCtx([
+      "crates/core/src/lib.rs",
+      "crates/core/src/tools/mod.rs",
+      "crates/core/src/tools/exec.rs",
+      "crates/core/src/credentials.rs",
+      "crates/core/src/credentials/file.rs",
+      "crates/cli/src/main.rs",
+      "crates/cli/src/chat.rs",
+    ]);
+    const from = "crates/core/src/tools";
+    // crate:: anchored at the dir holding lib.rs
+    expect(resolveSpec("rs", "crate::tools::exec", from, ws)).toEqual({
+      internal: "crates/core/src/tools/exec.rs",
+    });
+    // `use crate::{Sym}` → edge to the crate root file
+    expect(resolveSpec("rs", "crate::", from, ws)).toEqual({
+      internal: "crates/core/src/lib.rs",
+    });
+    // bare pub-use-style path → sibling module
+    expect(resolveSpec("rs", "exec::run", from, ws)).toEqual({
+      internal: "crates/core/src/tools/exec.rs",
+    });
+    // super:: → parent dir then the module path
+    expect(
+      resolveSpec("rs", "super::tools::exec", "crates/core/src/tools", ws),
+    ).toEqual({
+      internal: "crates/core/src/tools/exec.rs",
+    });
+    expect(resolveSpec("rs", "serde::Serialize", from, ws)).toEqual({
+      external: "serde",
+    });
+    // foo.rs + foo/ stem-dir layout: `pub use file::X` inside credentials.rs
+    expect(
+      resolveSpec(
+        "rs",
+        "file::FileStore",
+        "crates/core/src",
+        ws,
+        "crates/core/src/credentials.rs",
+      ),
+    ).toEqual({ internal: "crates/core/src/credentials/file.rs" });
+    // unresolved anchored paths are dropped, not misreported external
+    expect(resolveSpec("rs", "crate::nope::x", from, ws)).toBeNull();
   });
   it("resolves c includes by suffix", () => {
     expect(resolveSpec("c", "net/socket.h", "src", ctx)).toEqual({
