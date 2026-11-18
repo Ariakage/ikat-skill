@@ -1,4 +1,8 @@
+![ikat — bound warp](docs/assets/banner.png)
+
 # ikat
+
+**English** · [中文](README_CN.md)
 
 Low-token repository orientation for coding agents. `ikat` builds a
 **deterministic, local index** of your repo — file roles, import graph,
@@ -123,6 +127,13 @@ Measured on this machine (warm cache):
 `sync` reuses unchanged entries by size+mtime — ~9× cheaper than cold
 init at 11.5k files. Probing batches external tool calls instead of
 spawning one process per asset.
+
+![init vs sync wall time by repo](docs/assets/perf-bars.png)
+
+The gap between the blue and orange columns is the product thesis:
+indexing is a one-time cost, staleness checks are nearly free.
+
+![init scaling — files vs seconds](docs/assets/perf-scatter.png)
 
 ## Boundaries
 

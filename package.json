@@ -26,7 +26,8 @@
   },
   "files": [
     "dist",
-    "SKILL.md"
+    "SKILL.md",
+    "README_CN.md"
   ],
   "engines": {
     "node": ">=20"
