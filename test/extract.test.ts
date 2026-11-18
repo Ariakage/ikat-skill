@@ -1,5 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  augmentResolveCtx,
   buildResolveCtx,
   extractDoc,
   extractExports,
@@ -226,5 +230,54 @@ describe("resolveSpec", () => {
     expect(resolveSpec("c", "net/socket.h", "src", ctx)).toEqual({
       internal: "include/net/socket.h",
     });
+  });
+
+  it("resolves workspace package names and tsconfig paths", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ikat-ws-"));
+    try {
+      const put = (rel: string, content: string) => {
+        mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+        writeFileSync(path.join(root, rel), content);
+      };
+      put(
+        "packages/schema/package.json",
+        JSON.stringify({
+          name: "@acme/schema",
+          exports: { ".": "./src/index.ts", "./*": "./src/*.ts" },
+        }),
+      );
+      put("packages/schema/src/tool.ts", "export {};\n");
+      put(
+        "packages/app/tsconfig.json",
+        JSON.stringify({
+          compilerOptions: {
+            baseUrl: ".",
+            paths: { "@/*": ["src/*"], "~lib/*": ["lib/*"] },
+          },
+        }),
+      );
+      put("packages/app/src/main.ts", "");
+      const wsctx = buildResolveCtx([
+        "packages/schema/package.json",
+        "packages/schema/src/tool.ts",
+        "packages/app/tsconfig.json",
+        "packages/app/src/main.ts",
+      ]);
+      await augmentResolveCtx(root, wsctx);
+      // workspace package subpath via exports ./* → ./src/*.ts
+      expect(
+        resolveSpec("ts", "@acme/schema/tool", "packages/app/src", wsctx),
+      ).toEqual({ internal: "packages/schema/src/tool.ts" });
+      // tsconfig paths @/* → src/* (nearest covering tsconfig)
+      expect(resolveSpec("ts", "@/main", "packages/app/src/x", wsctx)).toEqual({
+        internal: "packages/app/src/main.ts",
+      });
+      // unknown package stays external
+      expect(resolveSpec("ts", "react", "packages/app/src", wsctx)).toEqual({
+        external: "react",
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
