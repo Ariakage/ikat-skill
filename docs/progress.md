@@ -27,7 +27,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `ef1948a` | Probe fallback chain; markitdown lazy document pipeline |
 | 2026-11-19 | `def22a5` | Design + progress docs recorded |
 | 2026-11-19 | `5c092b2` | M1: CLI scaffold + init/status/digest/uninit; package `ikat-cli` |
-| 2026-11-19 | (pending) | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
+| 2026-11-19 |  `16898df` | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
 
 ## Confirmed (do not re-litigate)
 
