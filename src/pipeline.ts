@@ -136,10 +136,12 @@ export async function buildEntry(
 export async function resolveAllEdges(
   root: string,
   entries: FileEntry[],
+  onItem?: () => void,
 ): Promise<void> {
   const ctx = buildResolveCtx(entries.map((e) => e.path));
   await augmentResolveCtx(root, ctx);
   for (const e of entries) {
+    onItem?.();
     const dir = e.path.includes("/")
       ? e.path.slice(0, e.path.lastIndexOf("/"))
       : "";

@@ -42,7 +42,7 @@ docs/design.md     # confirmed decisions + reference analysis + open items
 docs/progress.md   # milestone tracker + decision log — keep current
 src/cli.ts         # arg dispatch (parseArgs, zero deps)
 src/commands/      # init / sync / status / digest / file / refs /
-                   # enrich / put / uninit
+                   # enrich / put / convert / doctor / diagram / uninit
 src/entries.ts     # L1 FRAS overlay: parse, validate, store, auto-tag
 src/pipeline.ts    # shared scan→extract→resolve→index pipeline
 src/paths.ts       # repo-root + arg→repo-path resolution
@@ -52,6 +52,10 @@ src/extract.ts     # doc-comment/import/export extraction + spec resolution
 src/rank.ts        # deterministic core ranking
 src/store.ts       # index/meta io, hashing, format version
 src/digest.ts      # pruned tree + digest.md renderer
+src/diagram.ts     # Mermaid node selection + renderer
+src/probe.ts       # media/document probe chain + batched tool execs
+src/tools.ts       # PATH lookup + external command runner
+src/progress.ts    # TTY progress renderer (stderr, silent when piped)
 src/marker.ts      # AGENTS.md marker + .git/info/exclude (worktree-aware)
 src/git.ts         # git plumbing helpers
 test/              # vitest unit tests

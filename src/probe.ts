@@ -362,13 +362,17 @@ const chunks = <T>(items: T[], n: number): T[][] => {
  * batches (one process per ~400 paths), ffprobe/pdfinfo run per file on
  * a small concurrency pool. Output is joined back by arg order (file -b)
  * or SourceFile (exiftool -json). */
-export async function runProbeBatch(batch: ProbeBatch): Promise<void> {
+export async function runProbeBatch(
+  batch: ProbeBatch,
+  onStep?: (n?: number) => void,
+): Promise<void> {
   for (const chunk of chunks(batch.exiftool, 400)) {
     const r = await run(
       "exiftool",
       ["-json", "-ImageWidth", "-ImageHeight", ...chunk.map((c) => c.abs)],
       60_000,
     );
+    onStep?.(chunk.length);
     if (!r) continue;
     try {
       const arr = JSON.parse(r.stdout) as Record<string, unknown>[];
@@ -386,6 +390,7 @@ export async function runProbeBatch(batch: ProbeBatch): Promise<void> {
   }
   for (const chunk of chunks(batch.file, 400)) {
     const r = await run("file", ["-b", ...chunk.map((c) => c.abs)], 30_000);
+    onStep?.(chunk.length);
     const lines = r?.stdout.split("\n") ?? [];
     chunk.forEach((c, i) => {
       const t = lines[i]?.trim();
@@ -408,6 +413,7 @@ export async function runProbeBatch(batch: ProbeBatch): Promise<void> {
           const x = items[i++];
           if (x === undefined) break;
           await fn(x);
+          onStep?.();
         }
       }),
     );
@@ -419,6 +425,9 @@ export async function runProbeBatch(batch: ProbeBatch): Promise<void> {
     if (await probePdfinfo(c.abs, c.info)) c.info.tool = "pdfinfo";
   });
 }
+
+export const probeBatchSize = (b: ProbeBatch): number =>
+  b.exiftool.length + b.file.length + b.ffprobe.length + b.pdfinfo.length;
 
 /** Probe one file: builtin header → ffprobe (A/V) → pdfinfo (pdf) →
  * exiftool → file(1) → extension fallback. Missing tools skip silently;

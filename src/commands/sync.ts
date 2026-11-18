@@ -10,7 +10,13 @@ import {
   mapPool,
   resolveAllEdges,
 } from "../pipeline.js";
-import { newProbeBatch, probeTools, runProbeBatch } from "../probe.js";
+import {
+  newProbeBatch,
+  probeBatchSize,
+  probeTools,
+  runProbeBatch,
+} from "../probe.js";
+import { Progress, progressOn } from "../progress.js";
 import { computeRanks } from "../rank.js";
 import { type FileEntry, inventory } from "../scan.js";
 import { FORMAT, readIndex, VERSION, writeArtifacts } from "../store.js";
@@ -55,7 +61,10 @@ export async function runSync(opts: SyncOptions): Promise<number> {
   };
 
   const probeBatch = newProbeBatch();
+  const tty = progressOn(opts.quiet);
+  const scan = new Progress("scan", paths.length, tty);
   const built = await mapPool(paths, 32, async (p) => {
+    scan.tick();
     const old = oldByPath.get(p);
     let reusable = false;
     if (old && Array.isArray(old.specs)) {
@@ -77,12 +86,18 @@ export async function runSync(opts: SyncOptions): Promise<number> {
     else report.added++;
     return buildEntry(root, p, repoFiles, probeBatch);
   });
+  scan.finish();
   for (const e of built) if (e) entries.push(e);
-  await runProbeBatch(probeBatch);
+  const probeTotal = probeBatchSize(probeBatch);
+  const probe = new Progress("probe", probeTotal, tty && probeTotal > 0);
+  await runProbeBatch(probeBatch, (n) => probe.tick(n));
+  probe.finish();
   const current = new Set(entries.map((e) => e.path));
   report.removed = prev.files.filter((f) => !current.has(f.path)).length;
 
-  await resolveAllEdges(abs, entries);
+  const edges = new Progress("edges", entries.length, tty);
+  await resolveAllEdges(abs, entries, () => edges.tick());
+  edges.finish();
   computeRanks(entries);
   const index = await buildIndex(root, entries, paths);
 
