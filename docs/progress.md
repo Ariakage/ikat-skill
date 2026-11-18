@@ -1,6 +1,6 @@
 # ikat — Progress
 
-Current phase: **M2 done — drill-down + incremental sync**.
+Current phase: **M3 done — L1 entries (FRAS overlays) live**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
@@ -9,7 +9,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   `index.json` + `digest.md` render + AGENTS.md marker. L0 usable.
 - [x] **M2 — drill-down + drift**: `file` / `refs` / `status` / `sync`,
   hash-based staleness.
-- [ ] **M3 — entries**: `entries.txt` store, `put` / `enrich` validation,
+- [x] **M3 — entries**: `entries.txt` store, `put` / `enrich` validation,
   merged digest render.
 - [ ] **M4 — diagram**: `diagram --draft` baseline + marker/docs polish.
 - [ ] **M5 — formats + hardening**: media probe chain, markitdown pipeline,
@@ -28,6 +28,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `def22a5` | Design + progress docs recorded |
 | 2026-11-19 | `5c092b2` | M1: CLI scaffold + init/status/digest/uninit; package `ikat-cli` |
 | 2026-11-19 |  `16898df` | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
+| 2026-11-19 | (pending) | M3: entries.txt store + put/enrich + merged digest; live-hash binding |
 
 ## Confirmed (do not re-litigate)
 
@@ -74,15 +75,40 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 - Verified: 54 vitest cases incl. tmp-repo integration tests; dogfooded
   on this repo (31→1 refreshed drift detection, edge re-resolution).
 
+## Implemented in M3
+
+- `.ikat/entries.txt` — one line per file:
+  `path[TAG]: F:..|R:..|A:..|S:.. @hash12`; any field subset legal;
+  comments/blank lines skipped; sorted output.
+- `ikat put <path> --entry "S:…"` (or stdin lines `path[TAG]: fields`) —
+  validates path-in-index, tag letters, field order F→R→A→S, budgets
+  (F≤140/A≤100/S≤200/R≤10 targets/line≤400), literal R-target existence
+  (globs pass unchecked); binds the **live file hash**, warning when the
+  index is stale; re-renders digest on store.
+- `ikat enrich [--limit n] [--only-stale] [--json]` — ranked queue of
+  files missing a fresh entry; auto-tag preview `path [E8M]`; stale rows
+  flagged.
+- Auto-tag: layer from role (E/C/S/I/T/A/D), importance from rank
+  percentile 1–9, size tier T/S/M/L — authors may still write explicit
+  `[XIS]` tags.
+- Digest merge: `## Entries` section (top 15 ranked, stale flagged),
+  Core lines use entry-F override over doc, Coverage reports
+  `entries: fresh/total (pct)`.
+- `ikat status` reports `entries X/Y fresh (Z%)`; `--json` includes it.
+- `ikat sync` drops orphaned entries (file gone) and reports the count;
+  stale is computed, never stored.
+- Verified: 69 vitest cases incl. parse/validate/tag/state units and
+  put→enrich→sync→status integration on tmp repos; dogfooded on this
+  repo (entries 3/3 fresh 100%).
+
 ## Open (implementation-time decisions)
 
-- Exact `entries.txt` schema and FRAS field budgets (M3)
-- Enrich queue ordering beyond rank (M3)
+- Enrich queue ordering beyond rank (subsystem focus, git-recent)
 - tsconfig `paths` / babel alias resolution for JS/TS imports (M2+?)
 - Monorepo/multi-root behavior; max-repo performance tuning
 - Mermaid draft layout strategy (M4)
 
 ## Next action
 
-M3: `entries.txt` store + `ikat put`/`enrich` overlay validation + merged
-digest render (L1 agent-authored entries).
+M4: `ikat diagram --draft` — deterministic Mermaid baseline (directory
+clusters + real import edges + doc labels) written to `.ikat/diagram.mmd`.
