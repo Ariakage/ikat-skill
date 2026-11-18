@@ -5,18 +5,32 @@ Conventions for coding agents working in this repository.
 ## Project overview
 
 **ikat** ("I know all things") is an agent skill that gives coding agents a
-fast, low-token understanding of a project's structure. Instead of re-scanning
-a codebase on every session, the agent loads a compact structural index and
-drills into files only when needed.
+fast, low-token understanding of a project's structure. A deterministic
+TypeScript CLI builds a per-repo index under `.ikat/`; the agent reads a
+bounded digest and drills into files only when needed. The same index feeds
+the `diagram` workflow, which produces an evidence-grounded Mermaid
+architecture diagram of the repo.
 
-- **Type**: agent skill repository — a `SKILL.md` entry point plus the
-  supporting tooling that produces and maintains the index.
+- **Type**: agent skill repository — `SKILL.md` (the workflow contract) plus
+  the TypeScript CLI that produces and maintains the index.
 - **Implementation language**: TypeScript.
 - **Design constraint**: outputs are consumed by agents, so they must be
   compact. Prefer terse, structured formats over prose; token cost is a
   first-class requirement, not an afterthought.
-- **Status**: repository initialized; layout and tooling are still being set
-  up. Treat any structure implied by docs as intent until the files exist.
+- **Design split**: the CLI measures (tree, ranking, import graph); the agent
+  reasons (orientation, diagram composition). Keep it that way — no model
+  calls inside the CLI.
+- **Status**: `SKILL.md` is the agreed workflow draft; the CLI is not yet
+  implemented. Treat command names and index formats there as the contract to
+  build against, flagging deviations back to the user.
+
+Layout (planned — files that don't exist yet are intent, not fact):
+
+```
+SKILL.md    # skill entry point: triggers, init/orient/diagram workflows
+AGENTS.md   # this file — contributor conventions
+src/        # TypeScript CLI source (pending)
+```
 
 ## Getting started
 
