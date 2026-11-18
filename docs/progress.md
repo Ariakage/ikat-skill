@@ -1,7 +1,7 @@
 # ikat — Progress
 
-Current phase: **v1 complete — M5 done + real-repo acceptance (soyo-harness,
-626 files) passed**.
+Current phase: **v1 hardened — quality debt cleared, publish-ready
+(README/LICENSE/metadata done; `npm publish` pending user auth)**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
@@ -35,6 +35,13 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `5bbd772` | Rust resolver: anchors, pub use, stem-dir modules (soyo-harness acceptance) |
 | 2026-11-19 | `8913325` | Diagram: connected-component growth + cap (0→34 edges on soyo-harness) |
 | 2026-11-19 | `aa96042` | digest `(none)` label; `.temp/` ignored |
+| 2026-11-19 | `0513190` | opencode acceptance + perf measurements recorded |
+| 2026-11-19 | `f49c091` | Probe exec batching (runProbeBatch): per-file spawns → argv batches |
+| 2026-11-19 | `b5c5b4b` | Workspace package + tsconfig paths resolution (+11k edges on opencode) |
+| 2026-11-19 | `8eb4f2d` | Parallel entry build + batch drain + async edge ctx (init 21.6→2.8 s) |
+| 2026-11-19 | `065681f` | Diagram rank-direction fix + guaranteed top seeds (36 e soyo / 45 e opencode) |
+| 2026-11-19 | `42d73c8` | Enrich: recency (+30%) + coverage-gap (+20%) ordering, shallow-clone guard |
+| 2026-11-19 | `24cc53d` | LICENSE + package.json metadata + README (npm pack verified 34.7 KB) |
 
 ## Confirmed (do not re-litigate)
 
@@ -213,21 +220,41 @@ Second real-repo pass, ~18× larger:
   opencode 11,575 f / 21.594 s / 0.468 s. Charts generated
   (`/tmp/ikat-perf-*.png`).
 
+## Hardening pass (post-acceptance)
+
+- **Perf**: probe execs were ~20 s of the 21.6 s opencode init — now
+  batched (`file -b`/`exiftool -json` in 400-path argv batches) and
+  entries build at 32-way concurrency. Measured: 21.6 s → 2.8 s init,
+  0.47 s → 0.32 s sync. Same probe output.
+- **Resolution**: `@scope/pkg` workspace self-imports resolve via
+  package.json `exports` (longest-prefix + star substitution); tsconfig
+  `paths`/`baseUrl` resolve via the nearest covering config. opencode:
+  15,745 → 26,884 edges. `extends` chains and conditional-export branch
+  selection are documented approximations (first leaf).
+- **Diagram**: byRank was ascending — a real inversion bug, since rank
+  is an in-degree-weighted score (digest/enrich already sorted desc).
+  Fixed + 8 guaranteed component seeds for top-ranked nodes.
+  soyo-harness 19→36 edges incl. lib.rs; opencode 15→45 edges.
+- **Enrich**: queue = rank × (1.3 if in last-50-commit touched set,
+  1.2 if its directory has no fresh entry). Guard: shallow clones
+  reporting >80% of files as changed disable the recency signal.
+- **Release**: LICENSE (MIT), author/repository/keywords metadata,
+  README, `npm pack --dry-run` = 4 files / 34.7 KB, `--tracked`
+  end-to-end verified on a fixture.
+
 ## Open (implementation-time decisions)
 
-- Enrich queue ordering beyond rank (subsystem focus, git-recent)
-- tsconfig `paths` / babel alias resolution for JS/TS imports (M2+?)
-- Monorepo/multi-root behavior; max-repo performance tuning
+- Monorepo/multi-root: workspace packages resolve, but each repo still
+  owns one `.ikat/` at its root — no cross-repo federation (no demand yet)
 - Entry-layer clustering option for diagram draft (currently directory)
-- Diagram: highest-rank `lib.rs` can still lose to frontier seeds —
-  consider a floor guaranteeing the top-N ranked nodes a slot; on
-  >10k-file monorepos seeds scatter across packages (15 edges @ opencode)
-- Perf: profile the superlinear per-file cost at scale (~1.9 ms/file on
-  opencode vs ~0.66 ms on soyo-harness); likely probe exec or an O(n)
-  pass per file
+- tsconfig `extends` chains not followed; conditional exports take the
+  first leaf deterministically — both acceptable for a draft-grade index
+- `enrich` shallow-clone recency is a heuristic (80% guard), not a
+  commit-depth check
+- Future: tree-sitter extraction, symbol graph, DB-schema indexing,
+  single-binary packaging
 
 ## Next action
 
-Publish-readiness pass: npm metadata/bin wiring, README, `--tracked`
-end-to-end check, large-repo perf smoke. The v1 CLI surface is
-feature-complete against SKILL.md.
+`npm publish` (needs the user's npm auth). Then: README screenshots/
+demo GIF if desired, CI wiring, and a CHANGELOG for subsequent bumps.
