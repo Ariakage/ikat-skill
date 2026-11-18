@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { runDiagram } from "./commands/diagram.js";
 import { runEnrich } from "./commands/enrich.js";
 import { runFile } from "./commands/file.js";
 import { runInit } from "./commands/init.js";
@@ -23,6 +24,7 @@ commands:
   refs <path>     imports + reverse importers              --json
   enrich [path]   entry work queue      --limit n · --only-stale · --json
   put <path>      validate + store FRAS line (stdin or --entry)
+  diagram [path]  print .ikat/diagram.mmd                  --draft regenerate
   uninit [path]   remove index, marker, and exclude entry
 
 init flags:
@@ -138,6 +140,17 @@ async function main(): Promise<number> {
         target: ".",
         file: positionals[0] ?? null,
         entry: values.entry ?? null,
+      });
+    }
+    case "diagram": {
+      const { values, positionals } = parseArgs({
+        args: rest,
+        allowPositionals: true,
+        options: { draft: { type: "boolean", default: false } },
+      });
+      return runDiagram({
+        target: positionals[0] ?? ".",
+        draft: values.draft!,
       });
     }
     case "uninit":

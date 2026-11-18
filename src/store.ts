@@ -15,6 +15,7 @@ export interface RepoMeta {
   head: string | null;
   counts: Record<string, number>;
   digestBytes: number;
+  diagramBytes?: number;
   exclude: "info/exclude" | "tracked" | "none";
 }
 
