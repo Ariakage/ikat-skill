@@ -4,8 +4,13 @@ import { renderDigest } from "../digest.js";
 import { readEntries, writeEntries } from "../entries.js";
 import { topLevel } from "../git.js";
 import { gitDir } from "../marker.js";
-import { buildEntry, buildIndex, resolveAllEdges } from "../pipeline.js";
-import { probeTools } from "../probe.js";
+import {
+  buildEntry,
+  buildIndex,
+  mapPool,
+  resolveAllEdges,
+} from "../pipeline.js";
+import { newProbeBatch, probeTools, runProbeBatch } from "../probe.js";
 import { computeRanks } from "../rank.js";
 import { type FileEntry, inventory } from "../scan.js";
 import { FORMAT, readIndex, VERSION, writeArtifacts } from "../store.js";
@@ -49,7 +54,8 @@ export async function runSync(opts: SyncOptions): Promise<number> {
     removed: 0,
   };
 
-  for (const p of paths) {
+  const probeBatch = newProbeBatch();
+  const built = await mapPool(paths, 32, async (p) => {
     const old = oldByPath.get(p);
     let reusable = false;
     if (old && Array.isArray(old.specs)) {
@@ -64,19 +70,19 @@ export async function runSync(opts: SyncOptions): Promise<number> {
       }
     }
     if (old && reusable) {
-      entries.push({ ...old, specs: [...old.specs] });
       report.unchanged++;
-      continue;
+      return { ...old, specs: [...old.specs] };
     }
     if (old) report.refreshed++;
     else report.added++;
-    const e = await buildEntry(root, p, repoFiles);
-    if (e) entries.push(e);
-  }
+    return buildEntry(root, p, repoFiles, probeBatch);
+  });
+  for (const e of built) if (e) entries.push(e);
+  await runProbeBatch(probeBatch);
   const current = new Set(entries.map((e) => e.path));
   report.removed = prev.files.filter((f) => !current.has(f.path)).length;
 
-  resolveAllEdges(entries);
+  await resolveAllEdges(abs, entries);
   computeRanks(entries);
   const index = await buildIndex(root, entries, paths);
 

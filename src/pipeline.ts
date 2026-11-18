@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  augmentResolveCtx,
   buildResolveCtx,
   extractDoc,
   extractExports,
@@ -10,7 +11,7 @@ import {
 } from "./extract.js";
 import { headSha } from "./git.js";
 import { langFor, PROSE_EXTS } from "./langs.js";
-import { probeFile } from "./probe.js";
+import { type ProbeBatch, probeFile } from "./probe.js";
 import {
   CONVERT_EXTS,
   classify,
@@ -24,12 +25,34 @@ import { FORMAT, type RepoIndex, VERSION } from "./store.js";
 
 const SHA_TAIL = 12;
 
+/** Bounded-concurrency map preserving input order — deterministic index
+ * output even though entries build in parallel. */
+export async function mapPool<T, R>(
+  items: T[],
+  n: number,
+  fn: (t: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(n, items.length) }, async () => {
+      for (;;) {
+        const j = i++;
+        if (j >= items.length) break;
+        out[j] = await fn(items[j]!);
+      }
+    }),
+  );
+  return out;
+}
+
 /** Stat, classify, hash and extract one repo file. Returns null when the
  * path vanished between listing and stat. */
 export async function buildEntry(
   root: string,
   rel: string,
   repoFiles?: Set<string>,
+  probeBatch?: ProbeBatch,
 ): Promise<FileEntry | null> {
   const abs = path.join(root, rel);
   let st: Awaited<ReturnType<typeof fs.stat>>;
@@ -93,7 +116,12 @@ export async function buildEntry(
     role === "asset" || (role === "document" && !PROSE_EXTS.has(extOf(rel)));
   if (probed && st.size <= MAX_HASH_BYTES) {
     try {
-      entry.media = await probeFile(abs, rel, repoFiles ?? new Set());
+      entry.media = await probeFile(
+        abs,
+        rel,
+        repoFiles ?? new Set(),
+        probeBatch,
+      );
     } catch {
       /* probe is best-effort */
     }
@@ -105,8 +133,12 @@ export async function buildEntry(
 /** Re-resolve every entry's raw specifiers against the current file set.
  * Edges depend on the whole inventory, so this must run on all entries —
  * including reused ones — on every init/sync. */
-export function resolveAllEdges(entries: FileEntry[]): void {
+export async function resolveAllEdges(
+  root: string,
+  entries: FileEntry[],
+): Promise<void> {
   const ctx = buildResolveCtx(entries.map((e) => e.path));
+  await augmentResolveCtx(root, ctx);
   for (const e of entries) {
     const dir = e.path.includes("/")
       ? e.path.slice(0, e.path.lastIndexOf("/"))
