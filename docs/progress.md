@@ -188,6 +188,31 @@ Findings and fixes:
 - `.gitignore` gained `.temp/` so acceptance fixtures stay out of the
   repo.
 
+## Acceptance — opencode (11,575 files, TS monorepo)
+
+Second real-repo pass, ~18× larger:
+
+- `init`: 11,575 files in **21.6 s** (~536 files/s), 15,745 internal
+  edges, 341 external packages, digest 13.8 KB / ≈3.5k tokens.
+- `sync` (no-op): **0.47 s** — size+mtime reuse holds at scale;
+  incremental path is ~46× cheaper than cold init.
+- `refs packages/ai/src/effect.ts`: 21 out / 0 ext / **185 in** — the
+  barrel-hub picture is honest (test fan-in dominates).
+- `enrich` top of queue plausible (`effect.ts [C9S]`,
+  `schema/index.ts [E8T]`).
+- `diagram --draft`: 24 nodes / 15 edges / 14 clusters — weaker than
+  soyo-harness: on a monorepo this size the frontier seeds scatter
+  across packages before hubs form. Known limitation, acceptable for a
+  draft.
+- **Perf observation**: per-file cost grows with repo size
+  (626 f/0.41 s ≈ 1.5k f/s → 11.6k f/21.6 s ≈ 0.54k f/s) — superlinear
+  somewhere (probe/exec or edge passes). Fine for a one-time init;
+  profiled tuning is an open item.
+- Measurement set (this machine, warm cache): ikat-skill 43 f / 0.084 s
+  init / 0.080 s sync · soyo-harness 626 f / 0.413 s / 0.090 s ·
+  opencode 11,575 f / 21.594 s / 0.468 s. Charts generated
+  (`/tmp/ikat-perf-*.png`).
+
 ## Open (implementation-time decisions)
 
 - Enrich queue ordering beyond rank (subsystem focus, git-recent)
@@ -195,7 +220,11 @@ Findings and fixes:
 - Monorepo/multi-root behavior; max-repo performance tuning
 - Entry-layer clustering option for diagram draft (currently directory)
 - Diagram: highest-rank `lib.rs` can still lose to frontier seeds —
-  consider a floor guaranteeing the top-N ranked nodes a slot
+  consider a floor guaranteeing the top-N ranked nodes a slot; on
+  >10k-file monorepos seeds scatter across packages (15 edges @ opencode)
+- Perf: profile the superlinear per-file cost at scale (~1.9 ms/file on
+  opencode vs ~0.66 ms on soyo-harness); likely probe exec or an O(n)
+  pass per file
 
 ## Next action
 
