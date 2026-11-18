@@ -35,6 +35,7 @@ codegraph (per-project index dir, AGENTS.md marker wiring), and aoci-code
 ├── entries.txt     # L1 — authored overlay: FRAS lines, hash-bound
 ├── digest.md       # rendered merge of L0+L1 — READ THIS FIRST (bounded)
 ├── diagram.mmd     # last generated architecture diagram (Mermaid source)
+├── converted/      # lazily converted document Markdown, keyed by hash
 └── meta.json       # tool version, generation time, repo HEAD, stats
 ```
 
@@ -46,8 +47,10 @@ renders — regenerable, never authoritative. Per source file, L0 records:
 - `exports` — public symbol names (≈ the A field, free)
 - `doc` — leading doc-comment, first paragraph (≈ the F field, free)
 - `role` — heuristic class from path: entry / route / service / store /
-  test / config / asset / generated
+  test / config / asset / document / generated
 - `media` — for binaries, probed metadata (see Media and binary files)
+- `conv` — for documents, markitdown conversion state: `pending` /
+  `converted` / `too-large` / `unavailable` (see Media and binary files)
 - `rank` — deterministic score: import in-degree × size × entry-likeness
 
 Repo inventory comes from `git ls-files -c -o --exclude-standard` (tracked +
@@ -72,8 +75,8 @@ src/prompts.ts[C9L]: F:LLM prompt contracts for the pipeline | S:Repo text is un
 - **F** responsibility (≤140) · **R** strong relations (≤10 existing paths or
   globs) · **A** public contract (≤100) · **S** un-inferable constraint
   (≤200). Line ≤400 chars.
-- Tags `[XIS]`: **X** layer `E`ntry/`C`ore/`S`upport/`I`nfra/`T`est/`A`sset ·
-  **I** importance 1–9 · **S** size `T`/`S`/`M`/`L`.
+- Tags `[XIS]`: **X** layer `E`ntry/`C`ore/`S`upport/`I`nfra/`T`est/`A`sset/
+  `D`ocument · **I** importance 1–9 · **S** size `T`/`S`/`M`/`L`.
 - The CLI validates path existence, tag letters, R-targets, field order and
   budgets — never the truth of the claims, never the text itself.
 - Hash drift marks the entry `stale`: kept visible in the digest, excluded
@@ -85,22 +88,34 @@ Videos, audio, images, fonts, archives and other binaries are inventory, not
 noise — the index records what and where they are, never pretending to have
 read their contents.
 
-- **Probe is deterministic and free.** `index.json`'s `media` record per
-  binary: format (magic bytes, extension fallback), size, plus what local
-  tools can measure — `ffprobe` gives duration/codec/resolution for video and
-  audio; PNG/JPEG/GIF headers give image dimensions with zero deps. Missing
-  tools degrade the record to format+size, and the digest says which.
+- **Probe is deterministic and layered.** Each binary gets the deepest
+  record available tools allow — built-in magic bytes + headers first
+  (format always; PNG/JPEG/GIF/WebP dimensions and ZIP member listing with
+  zero deps), then `file(1)` for type, `ffprobe` for A/V duration/codec/
+  resolution, `exiftool`/`pdfinfo` for document metadata (author, pages,
+  dates). Every level is optional; format+size is the floor and the digest
+  says which level ran.
 - **A sidecar is free meaning.** `<name>.md` / `<name>.txt` beside a media
   file supplies its F; `.srt`/`.vtt` beside a video is noted as an available
   transcript.
-- **Content understanding is delegated, never re-implemented.** When a
-  question needs what's *inside* a media file, ikat says so and hands off:
-  video/audio → the `video-storyboard` skill (probe → storyboard sheets +
-  timestamped index → zoom; invoke per its SKILL.md); images → the agent's
-  own file-read/vision; PDFs/docs → the host's text tools. ikat indexes
-  media; it does not watch, OCR or transcribe it.
+- **Documents become text via markitdown.** PDF/DOCX/XLSX/PPTX/EPUB/HTML/
+  IPYNB/MSG/ZIP convert to cached Markdown at `.ikat/converted/<path>.md`
+  when a `markitdown` CLI is on PATH (`uvx markitdown`, `pipx` or the Python
+  package all qualify). Conversion is **lazy**: `ikat file` or
+  `ikat convert <path>` converts on demand and caches by hash — init never
+  blocks on a 300-page PDF. Once converted, a document behaves like text:
+  first paragraph → `doc` (≈F), bounded excerpts via `ikat file`, and it
+  joins the enrich queue. Oversized or failed conversions are recorded in
+  `conv`, not retried silently.
+- **Audio/video/images delegate, never re-implement.** Video and audio →
+  the `video-storyboard` skill (probe → storyboard sheets + timestamped
+  index → zoom; invoke per its SKILL.md); images → the agent's own
+  file-read/vision. markitdown's image-caption and speech features are out
+  of scope — they need model calls, and content skills already own this.
+  ikat indexes media; it does not watch, OCR or transcribe it.
 - **ikat file on a binary** prints the probe card and the handoff hint —
-  never a byte dump.
+  never a byte dump. On a convertible document it converts (or serves the
+  cache) and returns bounded Markdown excerpt.
 - **Entries still apply.** `S` carries what probing can't: `intro.mp4` →
   `S:Re-encode before release; shows deprecated UI`. Media files rank in
   enrich only by authored importance, never by byte size.
@@ -203,7 +218,9 @@ ikat refs <path>      # imports + reverse importers       (--json)
 ikat enrich [path]    # entry work queue (--limit n, --only-stale, --json)
 ikat put <path>       # validate + store one FRAS line (stdin or --entry)
 ikat diagram [path]   # --draft writes baseline · default prints current
-ikat doctor           # env probe: node, ffprobe, mmdc, skill integrations
+ikat convert <path>   # markitdown a document to cached .md (hash-bound)
+ikat doctor           # env probe: node, file, ffprobe, exiftool, pdfinfo,
+                      #   markitdown, mmdc, content-skill availability
 ikat uninit [path]    # remove .ikat/ and the marker block
 ```
 
@@ -219,9 +236,10 @@ run `ikat init`) · 2 misuse.
   job; a pre-commit hook is the `--tracked` refresh story. Raise before
   building either.
 - Not a truth oracle: validation guarantees the contract, not the claims.
-- Not a media reader: ikat probes binaries' metadata but delegates content
-  understanding to content skills (video-storyboard et al.) and the host's
-  own readers. It never embeds, transcodes or summarizes media itself.
+- Not a media reader: ikat probes binaries' metadata, converts documents
+  through markitdown, and delegates everything else to content skills
+  (video-storyboard for A/V) and the host's own readers. It never embeds,
+  OCRs, transcribes or summarizes media itself.
 - Deferred, not forgotten: tree-sitter extraction, symbol graph, DB schema
   indexing, single-binary packaging.
 
