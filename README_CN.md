@@ -4,6 +4,12 @@
 
 [English](README.md) · **中文**
 
+[![npm](https://img.shields.io/npm/v/ikat-cli?style=flat-square)](https://www.npmjs.com/package/ikat-cli)
+[![license](https://img.shields.io/github/license/Ariakage/ikat-skill?style=flat-square)](LICENSE)
+[![node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square)](https://nodejs.org)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-0-success?style=flat-square)](package.json)
+[![agent skill](https://img.shields.io/badge/agent%20skill-npx%20skills-4F5D95?style=flat-square)](https://skills.sh)
+
 为编码 agent 准备的低 token 仓库认知工具。`ikat` 为你的仓库构建一份
 **确定性、本地化的索引**——文件角色、import 关系图、文档注释、媒体
 元数据——再渲染成有界的 `digest.md`。agent 先读它，而不是重新扫描
@@ -30,10 +36,40 @@ npm i -g ikat-cli                 # 或全局安装 → `ikat init`
 
 需要 Node ≥ 20，零运行时依赖。
 
-把 skill 装进你的 agent（Claude Code、Devin、Cursor……）：
+## 给 Agent 用
+
+CLI 只是产品的一半，另一半是 **agent skill**（`SKILL.md`）——教 agent
+什么时候、怎么用这套 CLI。
+
+### 安装 skill
 
 ```bash
 npx skills add Ariakage/ikat-skill
+```
+
+通过开放的 [skills](https://skills.sh) 安装器把 `SKILL.md` 放进 agent
+的 skill 目录（`.claude/skills/`、`.devin/skills/`、`.agents/skills/`，
+支持 75+ 种 agent）。在项目内执行是项目级安装，加 `-g` 为全局安装。
+
+### 触发方式
+
+- **描述匹配**——skill 安装后暴露 `description`，任务与之匹配时 agent
+  自动加载：进入陌生仓库、问"这个项目什么结构"、"X 是怎么到 Y 的"、
+  "给这个代码库画架构图"。
+- **显式调用**——在 prompt 里直接说 `use ikat` 或 `/ikat`。
+- **AGENTS.md 标记**——`ikat init` 追加 `<!-- ikat:index -->` 块后，
+  之后每个 agent 会话都会自动被指引到 `.ikat/digest.md`，不需要再次
+  唤起 skill。
+
+### 一行启动 prompt（免安装）
+
+在任何仓库的会话开头粘贴这段即可：
+
+```text
+Run `npx ikat-cli@latest init`, read `.ikat/digest.md` for architecture
+context, then use `ikat file` / `ikat refs` / `ikat diagram` to drill down
+instead of re-scanning files. Run `ikat sync` after edits to keep the
+index fresh.
 ```
 
 ## 产物结构

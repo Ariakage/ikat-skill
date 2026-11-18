@@ -4,6 +4,12 @@
 
 **English** · [中文](README_CN.md)
 
+[![npm](https://img.shields.io/npm/v/ikat-cli?style=flat-square)](https://www.npmjs.com/package/ikat-cli)
+[![license](https://img.shields.io/github/license/Ariakage/ikat-skill?style=flat-square)](LICENSE)
+[![node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square)](https://nodejs.org)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-0-success?style=flat-square)](package.json)
+[![agent skill](https://img.shields.io/badge/agent%20skill-npx%20skills-4F5D95?style=flat-square)](https://skills.sh)
+
 Low-token repository orientation for coding agents. `ikat` builds a
 **deterministic, local index** of your repo — file roles, import graph,
 doc-comments, media metadata — then renders a bounded `digest.md` an
@@ -30,10 +36,42 @@ npm i -g ikat-cli                 # or install globally → `ikat init`
 
 Requires Node ≥ 20. Zero runtime dependencies.
 
-To install the skill itself into your agent (Claude Code, Devin, Cursor, …):
+## For agents
+
+The CLI is only half the product — the other half is the **agent skill**
+(`SKILL.md`) that teaches your agent when and how to use it.
+
+### Install the skill
 
 ```bash
 npx skills add Ariakage/ikat-skill
+```
+
+Uses the open [skills](https://skills.sh) installer to place `SKILL.md`
+into your agent's skill directory (`.claude/skills/`, `.devin/skills/`,
+`.agents/skills/` — 75+ agents supported). Run inside a project to install
+locally, or add `-g` for a global install.
+
+### How it activates
+
+- **Description match** — installed skills advertise a `description`; the
+  agent loads ikat when a task matches: entering an unfamiliar repo,
+  "how is this project structured", "how does X reach Y", "diagram this
+  codebase".
+- **Explicit** — say `use ikat` or `/ikat` anywhere in a prompt.
+- **AGENTS.md marker** — after `ikat init` appends the `<!-- ikat:index -->`
+  block, every future agent session is pointed at `.ikat/digest.md`
+  automatically; orientation happens without re-invoking the skill.
+
+### One-line bootstrap (no install)
+
+Paste this at the start of a session inside any repo:
+
+```text
+Run `npx ikat-cli@latest init`, read `.ikat/digest.md` for architecture
+context, then use `ikat file` / `ikat refs` / `ikat diagram` to drill down
+instead of re-scanning files. Run `ikat sync` after edits to keep the
+index fresh.
 ```
 
 ## What it produces
