@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1520" height="900" viewBox="0 0 1520 900">
+<rect width="1520" height="900" fill="#ffffff"/>
+<text x="110" y="52" font-family="Menlo, monospace" font-weight="bold" font-size="34" fill="#26272b">ikat init scaling — files indexed vs seconds</text>
+<line x1="110" y1="800" x2="1460" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="808" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">0</text>
+<line x1="110" y1="689.0625" x2="1460" y2="689.0625" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="697.0625" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">0.5</text>
+<line x1="110" y1="578.125" x2="1460" y2="578.125" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="586.125" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">1</text>
+<line x1="110" y1="467.1875" x2="1460" y2="467.1875" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="475.1875" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">1.5</text>
+<line x1="110" y1="356.25" x2="1460" y2="356.25" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="364.25" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">2</text>
+<line x1="110" y1="245.3125" x2="1460" y2="245.3125" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="253.3125" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">2.5</text>
+<line x1="110" y1="134.375" x2="1460" y2="134.375" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="94" y="142.375" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">3</text>
+<line x1="162.39588464848046" y1="90" x2="162.39588464848046" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="162.39588464848046" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">50</text>
+<line x1="321.76470588235287" y1="90" x2="321.76470588235287" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="321.76470588235287" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">100</text>
+<line x1="691.8076493543628" y1="90" x2="691.8076493543628" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="691.8076493543628" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">500</text>
+<line x1="851.1764705882352" y1="90" x2="851.1764705882352" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="851.1764705882352" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">1,000</text>
+<line x1="1221.219414060245" y1="90" x2="1221.219414060245" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="1221.219414060245" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">5,000</text>
+<line x1="1380.5882352941176" y1="90" x2="1380.5882352941176" y2="800" stroke="#e8e8ec" stroke-width="1.5"/>
+<text x="1380.5882352941176" y="838" text-anchor="middle" font-family="Menlo, monospace" font-size="22" fill="#9a9aa2">10,000</text>
+<text x="785" y="876" text-anchor="middle" font-family="Menlo, monospace" font-size="24" fill="#26272b">files indexed (log scale)</text>
+<text x="34" y="445" text-anchor="middle" font-family="Menlo, monospace" font-size="24" fill="#26272b" transform="rotate(-90 34 445)">init seconds</text>
+<polyline points="138.17133082224075,778.25625 743.480529346698,749.4125 1414.2169998358775,168.98750000000007" fill="none" stroke="#26272b" stroke-width="2.5" stroke-dasharray="10 8" stroke-opacity="0.45"/>
+<circle cx="138.17133082224075" cy="778.25625" r="14" fill="#4E79A7"/>
+<circle cx="138.17133082224075" cy="778.25625" r="14" fill="none" stroke="#4E79A7" stroke-opacity="0.3" stroke-width="10"/>
+<text x="162.17133082224075" y="714.25625" text-anchor="start" font-family="Menlo, monospace" font-weight="bold" font-size="26" fill="#26272b">ikat-skill</text>
+<text x="162.17133082224075" y="746.25625" text-anchor="start" font-family="Menlo, monospace" font-size="22" fill="#6a6a72">45 files · 0.098s · 105 edges</text>
+<circle cx="743.480529346698" cy="749.4125" r="14" fill="#F28E2B"/>
+<circle cx="743.480529346698" cy="749.4125" r="14" fill="none" stroke="#F28E2B" stroke-opacity="0.3" stroke-width="10"/>
+<text x="767.480529346698" y="685.4125" text-anchor="start" font-family="Menlo, monospace" font-weight="bold" font-size="26" fill="#26272b">soyo-harness</text>
+<text x="767.480529346698" y="717.4125" text-anchor="start" font-family="Menlo, monospace" font-size="22" fill="#6a6a72">626 files · 0.228s · 678 edges</text>
+<circle cx="1414.2169998358775" cy="168.98750000000007" r="14" fill="#59A14F"/>
+<circle cx="1414.2169998358775" cy="168.98750000000007" r="14" fill="none" stroke="#59A14F" stroke-opacity="0.3" stroke-width="10"/>
+<text x="1388.2169998358775" y="216.98750000000007" text-anchor="end" font-family="Menlo, monospace" font-weight="bold" font-size="26" fill="#26272b">opencode</text>
+<text x="1388.2169998358775" y="250.98750000000007" text-anchor="end" font-family="Menlo, monospace" font-size="22" fill="#6a6a72">11,575 files · 2.844s · 26,884 edges</text>
+<text x="140" y="150" font-family="Menlo, monospace" font-size="22" fill="#6a6a72">18.5× more files → 12.5× more time ≈ near-linear indexing</text>
+</svg>

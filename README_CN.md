@@ -129,7 +129,7 @@ hash 绑定；漂移时标 `stale` 而不删除。CLI 校验结构与出处—�
 蓝橙两列之间的差距就是产品论点本身：建索引是一次性成本，
 新鲜度检查近乎免费。
 
-![init 扩展性——文件数与耗时](docs/assets/perf-scatter.png)
+![init 扩展性——文件数与耗时](docs/assets/perf-scaling.png)
 
 ## 边界
 

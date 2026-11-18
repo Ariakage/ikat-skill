@@ -133,7 +133,7 @@ spawning one process per asset.
 The gap between the blue and orange columns is the product thesis:
 indexing is a one-time cost, staleness checks are nearly free.
 
-![init scaling — files vs seconds](docs/assets/perf-scatter.png)
+![init scaling — files vs seconds](docs/assets/perf-scaling.png)
 
 ## Boundaries
 
