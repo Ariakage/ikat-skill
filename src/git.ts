@@ -27,3 +27,15 @@ export function listFiles(cwd: string): string[] | null {
   if (out === null) return null;
   return out.split("\0").filter((p) => p.length > 0);
 }
+
+/** Files touched by the last n commits — deterministic given HEAD. */
+export function recentFiles(cwd: string, n = 50): Set<string> {
+  const out = git(
+    ["log", `--format=`, "-n", String(n), "--name-only", "-z"],
+    cwd,
+  );
+  const set = new Set<string>();
+  if (out === null) return set;
+  for (const p of out.split("\0")) if (p) set.add(p);
+  return set;
+}
