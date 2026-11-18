@@ -1,6 +1,6 @@
 # ikat — Progress
 
-Current phase: **M4 done — `diagram --draft` Mermaid baseline live**.
+Current phase: **M5 done — probe chain, `convert`, and `doctor` live**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
@@ -12,7 +12,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 - [x] **M3 — entries**: `entries.txt` store, `put` / `enrich` validation,
   merged digest render.
 - [x] **M4 — diagram**: `diagram --draft` baseline + marker/docs polish.
-- [ ] **M5 — formats + hardening**: media probe chain, markitdown pipeline,
+- [x] **M5 — formats + hardening**: media probe chain, markitdown pipeline,
   doctor, tests.
 
 ## Decision log
@@ -30,6 +30,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 |  `16898df` | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
 | 2026-11-19 | `5f43d23` | M3: entries.txt store + put/enrich + merged digest; live-hash binding |
 | 2026-11-19 | `6d3555a` | M4: diagram --draft writes .ikat/diagram.mmd (ranked nodes, dir clusters, import edges) |
+| 2026-11-19 | (pending) | M5: probe fallback chain + convert (markitdown/uvx) + doctor --verify |
 
 ## Confirmed (do not re-litigate)
 
@@ -118,6 +119,39 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   filtering, label precedence, escaping, node cap); dogfooded on this
   repo — 22 nodes / 68 edges / 2 clusters.
 
+## Implemented in M5
+
+- Probe fallback chain (`src/probe.ts`): builtin magic bytes (20
+  signatures incl. ftyp brand refine) + PNG/GIF/JPEG/WebP dims + ZIP
+  central-dir member list — all zero-dep — then optional `ffprobe`
+  (duration/dims/codec), `pdfinfo` (pages/title), `exiftool` (image dims
+  fallback), `file -b` (type line), floor = format+size. `media.tool`
+  records the deepest level used; sidecars (`.md/.txt/.srt`) detected
+  from the repo file set.
+- `conv` state on convertible docs (`CONVERT_EXTS` = DOCUMENT_EXTS +
+  `.zip`): `pending` at index; `ikat convert` runs `markitdown`, falling
+  back to `uvx markitdown` when the PATH shim is broken (stderr
+  discloses the fallback). Output cached at
+  `.ikat/converted/<path>.md` + `<path>.meta.json` (source hash, tool,
+  bytes, truncated flag); >64 MB source → `too-large`, >500 KB md →
+  truncated + marker. Fresh-cache hit is a no-op.
+- `ikat file`: binaries show a probe card (format/dims/duration/codec/
+  pages/members/sidecars/tool) + delegation hint (A/V → content skill,
+  image → host vision); converted docs excerpt the cached Markdown;
+  `.md`/`.txt` files now excerpt correctly (they have no lang but are
+  readable).
+- `ikat doctor` verifies tools actually run (`--version` probes), not
+  just PATH presence — a broken shim reports `! BROKEN` and exits 1
+  (this caught a real broken markitdown install during dev). `--json`
+  for scripting. video-storyboard skill detected across
+  `~/.agents`/`~/.claude`/`~/.codex` skill dirs incl. plugin `--` names.
+- `meta.probe` records which tools were on PATH at index time; digest
+  Coverage gains `media: N probed (tools) · docs: X converted, Y pending`.
+- Verified: 83 vitest cases incl. probe units (magic/dims/zip central
+  dir) and command integration; dogfooded on a media fixture —
+  ffprobe card `320x240 · 2s · h264`, sidecars, zip members, uvx
+  fallback converting real HTML.
+
 ## Open (implementation-time decisions)
 
 - Enrich queue ordering beyond rank (subsystem focus, git-recent)
@@ -127,6 +161,6 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Next action
 
-M5: media probe fallback chain (magic bytes → file → ffprobe → exiftool/
-pdfinfo → extension), `ikat convert` via markitdown with hash-bound
-`.ikat/converted/` cache, `ikat doctor` environment probe.
+Publish-readiness pass: npm metadata/bin wiring, README, `--tracked`
+end-to-end check, large-repo perf smoke. The v1 CLI surface is
+feature-complete against SKILL.md.
