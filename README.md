@@ -19,7 +19,7 @@ daemon, no network. Everything in the index is measured evidence.
 ```
 $ npx ikat-cli@latest init
 
-ikat 0.1.0 · /repo
+ikat 0.2.0 · /repo
 files  · 626 (source 338 · test 100 · config 41 · asset 20 · document 127)
 edges  · 678 internal · 132 external
 digest · .ikat/digest.md (6.2 KB)

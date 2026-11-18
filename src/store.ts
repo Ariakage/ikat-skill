@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { FileEntry } from "./scan.js";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 export const FORMAT = 1;
 export const IKAT_DIR = ".ikat";
 

@@ -1,6 +1,6 @@
 {
   "name": "ikat-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Low-token project orientation for coding agents: deterministic repo index + agent-authored entries",
   "license": "MIT",
   "author": "ariakage <ariakage233@gmail.com>",
@@ -27,7 +27,8 @@
   "files": [
     "dist",
     "SKILL.md",
-    "README_CN.md"
+    "README_CN.md",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
