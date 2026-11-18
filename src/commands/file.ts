@@ -1,8 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { PROSE_EXTS } from "../langs.js";
 import { resolveRoot, toRepoPath } from "../paths.js";
 import type { FileEntry } from "../scan.js";
-import { readIndex } from "../store.js";
+import { ikatPath, readIndex } from "../store.js";
 
 const DEFAULT_HEAD = 100;
 const FULL_CAP = 4000;
@@ -69,13 +70,47 @@ export async function runFile(opts: FileOptions): Promise<number> {
   }
 
   // excerpt
-  if (entry && !entry.lang) {
-    out.push(
-      "",
-      `(binary/${entry.role} file — content not shown; probe lands in M5)`,
-    );
+  const ext = entry?.path.slice(entry.path.lastIndexOf(".")) ?? "";
+  const readable =
+    !entry ||
+    !!entry.lang ||
+    PROSE_EXTS.has(ext.toLowerCase()) ||
+    entry.conv === "converted";
+  if (!readable) {
+    const m = entry!.media;
+    if (m) {
+      out.push("");
+      const parts = [
+        `${m.format}`,
+        m.dims,
+        m.duration ? `${m.duration}s` : null,
+        m.codec,
+        m.pages ? `${m.pages} pages` : null,
+        m.title ? `"${m.title}"` : null,
+      ].filter(Boolean);
+      out.push(`probe: ${parts.join(" · ")}  [${m.tool}]`);
+      if (m.type) out.push(`type: ${m.type}`);
+      if (m.members?.length) out.push(`members: ${m.members.join(", ")}`);
+      if (m.sidecars?.length) out.push(`sidecars: ${m.sidecars.join(", ")}`);
+    }
+    if (entry!.conv) {
+      out.push(
+        `conv: ${entry!.conv}${entry!.conv === "pending" ? ` — run \`ikat convert ${rel}\`` : ""}`,
+      );
+    }
+    const hint = /\.(mp4|mov|mkv|webm|avi|m4v|mp3|wav|flac|ogg|m4a|aac)$/i.test(
+      ext,
+    )
+      ? "hint: A/V — delegate to a content skill (e.g. video-storyboard); ikat does not read media"
+      : /\.(png|jpe?g|gif|webp|avif|heic|tiff?|bmp)$/i.test(ext)
+        ? "hint: image — read with the host's vision; ikat stores no pixels"
+        : "hint: binary — content not shown; probe card only";
+    out.push(hint);
   } else {
-    const absFile = path.join(root, rel);
+    const absFile =
+      entry?.conv === "converted" && !entry.lang
+        ? ikatPath(root, `converted/${rel}.md`)
+        : path.join(root, rel);
     try {
       const text = await fs.readFile(absFile, "utf8");
       const all = text.split(/\r?\n/);

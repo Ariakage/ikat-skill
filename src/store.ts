@@ -16,6 +16,8 @@ export interface RepoMeta {
   counts: Record<string, number>;
   digestBytes: number;
   diagramBytes?: number;
+  /** probe tools on PATH at index time (ffprobe/pdfinfo/exiftool/…) */
+  probe?: string[];
   exclude: "info/exclude" | "tracked" | "none";
 }
 
@@ -59,12 +61,12 @@ export async function writeArtifacts(
   await fs.mkdir(path.join(dir, "converted"), { recursive: true });
   await fs.writeFile(
     path.join(dir, "index.json"),
-    JSON.stringify(index, null, 2) + "\n",
+    `${JSON.stringify(index, null, 2)}\n`,
   );
   await fs.writeFile(path.join(dir, "digest.md"), digest);
   await fs.writeFile(
     path.join(dir, "meta.json"),
-    JSON.stringify(meta, null, 2) + "\n",
+    `${JSON.stringify(meta, null, 2)}\n`,
   );
 }
 
@@ -81,3 +83,13 @@ export const readMeta = (root: string): Promise<RepoMeta | null> =>
 
 export const readIndex = (root: string): Promise<RepoIndex | null> =>
   readJson<RepoIndex>(ikatPath(root, "index.json"));
+
+export async function writeIndex(
+  root: string,
+  index: RepoIndex,
+): Promise<void> {
+  await fs.writeFile(
+    ikatPath(root, "index.json"),
+    `${JSON.stringify(index, null, 2)}\n`,
+  );
+}

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { runConvert } from "./commands/convert.js";
 import { runDiagram } from "./commands/diagram.js";
+import { runDoctor } from "./commands/doctor.js";
 import { runEnrich } from "./commands/enrich.js";
 import { runFile } from "./commands/file.js";
 import { runInit } from "./commands/init.js";
@@ -25,6 +27,8 @@ commands:
   enrich [path]   entry work queue      --limit n · --only-stale · --json
   put <path>      validate + store FRAS line (stdin or --entry)
   diagram [path]  print .ikat/diagram.mmd                  --draft regenerate
+  convert <path>  markitdown a document to cached .md
+  doctor          environment probe (tools, skills)        --json
   uninit [path]   remove index, marker, and exclude entry
 
 init flags:
@@ -152,6 +156,22 @@ async function main(): Promise<number> {
         target: positionals[0] ?? ".",
         draft: values.draft!,
       });
+    }
+    case "convert": {
+      const target = rest[0];
+      if (!target) {
+        process.stderr.write("ikat: convert needs a path\n");
+        return 2;
+      }
+      return runConvert({ target: ".", file: target });
+    }
+    case "doctor": {
+      const { values } = parseArgs({
+        args: rest,
+        allowPositionals: false,
+        options: { json: { type: "boolean", default: false } },
+      });
+      return runDoctor({ json: values.json! });
     }
     case "uninit":
       return runUninit(cwdTarget(rest));

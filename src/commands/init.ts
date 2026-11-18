@@ -4,6 +4,7 @@ import { readEntries } from "../entries.js";
 import { topLevel } from "../git.js";
 import { applyMarker, ensureExclude, gitDir } from "../marker.js";
 import { buildEntry, buildIndex, resolveAllEdges } from "../pipeline.js";
+import { probeTools } from "../probe.js";
 import { computeRanks } from "../rank.js";
 import { type FileEntry, inventory } from "../scan.js";
 import { FORMAT, VERSION, writeArtifacts } from "../store.js";
@@ -28,9 +29,10 @@ export async function runInit(opts: InitOptions): Promise<number> {
     return 1;
   }
 
+  const repoFiles = new Set(paths);
   const entries: FileEntry[] = [];
   for (const p of paths) {
-    const e = await buildEntry(root, p);
+    const e = await buildEntry(root, p, repoFiles);
     if (e) entries.push(e);
   }
 
@@ -54,6 +56,7 @@ export async function runInit(opts: InitOptions): Promise<number> {
     head: index.repo.head,
     counts: stats.roles,
     digestBytes: Buffer.byteLength(digest),
+    probe: probeTools(),
     exclude: excludeStatus === "tracked" ? "tracked" : "info/exclude",
   });
 

@@ -131,6 +131,19 @@ export function renderDigest(
       ? `- entries: ${freshEntries} fresh / ${entries.size} total (${Math.round((freshEntries / entries.size) * 100)}%)`
       : "- entries: none yet (`ikat enrich` for the queue)";
 
+  const probed = files.filter((f) => f.media);
+  const tools = [...new Set(probed.map((f) => f.media!.tool))].sort();
+  const convPending = files.filter((f) => f.conv === "pending").length;
+  const convDone = files.filter((f) => f.conv === "converted").length;
+  const convParts = [
+    convDone ? `${convDone} converted` : null,
+    convPending ? `${convPending} pending` : null,
+  ].filter(Boolean);
+  const mediaLine =
+    probed.length || convParts.length
+      ? `- media: ${probed.length} probed${tools.length ? ` (${tools.join("+")})` : ""}${convParts.length ? ` · docs: ${convParts.join(", ")}` : ""}`
+      : null;
+
   const roleSummary = [
     [
       "source",
@@ -176,6 +189,7 @@ export function renderDigest(
     `- extracted ${extracted} files (imports/exports/doc)${oversized ? ` · skipped ${oversized} oversized` : ""}`,
     `- ${stats.edges} internal edges · ${externals} external packages`,
     entriesLine,
+    ...(mediaLine ? [mediaLine] : []),
     `- limits: content ≤1 MB/file · tree depth ≤${TREE_DEPTH} · langs: ${Object.keys(stats.langs).sort().join(", ") || "none"}`,
   ];
 

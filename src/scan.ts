@@ -8,6 +8,7 @@ import {
   MEDIA_EXTS,
   PROSE_EXTS,
 } from "./langs.js";
+import type { ProbeInfo } from "./probe.js";
 
 export type Role =
   | "entry"
@@ -36,6 +37,10 @@ export interface FileEntry {
   exports: string[];
   doc: string | null;
   rank: number;
+  /** probed metadata for binary/media/document files (M5) */
+  media?: ProbeInfo;
+  /** markitdown conversion state for convertible documents */
+  conv?: "pending" | "converted" | "too-large" | "unavailable";
 }
 
 const DEFAULT_IGNORE = new Set([
@@ -79,6 +84,11 @@ const SERVICE_PATH =
   /(^|\/)(services?|usecases?|api)(\/|$)|\.(service|usecase)s?\.[^./]+$|(^|\/)api\.[^./]+$/i;
 const STORE_PATH =
   /(^|\/)(store|state|models?|db|database|data|repositories?|repos|entities|migrations?)(\/|$)|\.(model|entity|migration)s?\.[^./]+$/i;
+
+/** Extensions markitdown can turn into Markdown. `.zip` (media-classified)
+ * converts to a member listing, so it lives here rather than in
+ * DOCUMENT_EXTS. */
+export const CONVERT_EXTS = new Set([...DOCUMENT_EXTS, ".zip"]);
 
 export function extOf(p: string): string {
   const m = /\.[^./\\]+$/.exec(p);

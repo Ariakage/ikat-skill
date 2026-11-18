@@ -3,6 +3,8 @@ import { promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runConvert } from "../src/commands/convert.js";
+import { runDoctor } from "../src/commands/doctor.js";
 import { runEnrich } from "../src/commands/enrich.js";
 import { runFile } from "../src/commands/file.js";
 import { runInit } from "../src/commands/init.js";
@@ -247,5 +249,56 @@ describe("put / enrich", () => {
     await runEnrich({ target: dir, limit: 10, onlyStale: true, json: false });
     expect(out()).toContain("src/lib/a.ts");
     expect(out()).toContain("⚠stale");
+  });
+});
+
+describe("probe / convert / doctor", () => {
+  const pngBuf = (): Buffer => {
+    const b = Buffer.alloc(33);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.write("\x0d\x0a\x1a\x0a", 4, "latin1");
+    b.write("IHDR", 12, "latin1");
+    b.writeUInt32BE(64, 16);
+    b.writeUInt32BE(32, 20);
+    return b;
+  };
+
+  it("probe card appears for a binary in `ikat file`", async () => {
+    await fs.writeFile(path.join(dir, "logo.png"), pngBuf());
+    await init();
+    outSpy.mockClear();
+    expect(
+      await runFile({
+        target: dir,
+        file: "logo.png",
+        lines: null,
+        full: false,
+      }),
+    ).toBe(0);
+    const s = out();
+    expect(s).toContain("probe: png · 64x32");
+    expect(s).toContain("hint: image");
+    expect(s).not.toContain("1│");
+  });
+
+  it("convert rejects non-convertible paths", async () => {
+    await init();
+    const err = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    expect(await runConvert({ target: dir, file: "src/lib/a.ts" })).toBe(1);
+    expect(err.mock.calls.map((c) => String(c[0])).join("")).toContain(
+      "not a convertible document",
+    );
+    err.mockRestore();
+  });
+
+  it("doctor runs and lists tools", async () => {
+    outSpy.mockClear();
+    const code = await runDoctor({ json: false });
+    expect([0, 1]).toContain(code); // 1 only when a PATH tool is broken
+    const s = out();
+    expect(s).toContain("node");
+    expect(s).toContain("markitdown");
   });
 });

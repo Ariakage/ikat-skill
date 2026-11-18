@@ -10,7 +10,9 @@ import {
 } from "./extract.js";
 import { headSha } from "./git.js";
 import { langFor, PROSE_EXTS } from "./langs.js";
+import { probeFile } from "./probe.js";
 import {
+  CONVERT_EXTS,
   classify,
   detectPurpose,
   extOf,
@@ -27,6 +29,7 @@ const SHA_TAIL = 12;
 export async function buildEntry(
   root: string,
   rel: string,
+  repoFiles?: Set<string>,
 ): Promise<FileEntry | null> {
   const abs = path.join(root, rel);
   let st: Awaited<ReturnType<typeof fs.stat>>;
@@ -85,6 +88,17 @@ export async function buildEntry(
   } catch {
     /* unreadable file: keep inventory row without hash */
   }
+  // binaries/documents: probe metadata; convertible docs get conv state
+  const probed =
+    role === "asset" || (role === "document" && !PROSE_EXTS.has(extOf(rel)));
+  if (probed && st.size <= MAX_HASH_BYTES) {
+    try {
+      entry.media = await probeFile(abs, rel, repoFiles ?? new Set());
+    } catch {
+      /* probe is best-effort */
+    }
+  }
+  if (CONVERT_EXTS.has(extOf(rel))) entry.conv = "pending";
   return entry;
 }
 
