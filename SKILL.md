@@ -1,7 +1,7 @@
 ---
 name: ikat
 description: Low-token project orientation for coding agents. Builds a local structural index of a repository (file tree, ranked core modules, computed import/export graph and doc-comments, optional agent-authored overlay entries) and lets the agent answer architecture questions and generate Mermaid diagrams from it instead of re-scanning files. Use when entering an unfamiliar repository, when asked "how is this project structured / how does X reach Y", or when asked to diagram the current repo.
-status: draft-contract — CLI not yet implemented; this file defines intended behavior.
+license: MIT
 ---
 
 # ikat — I Know All Things

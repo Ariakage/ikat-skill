@@ -30,6 +30,12 @@ npm i -g ikat-cli                 # or install globally → `ikat init`
 
 Requires Node ≥ 20. Zero runtime dependencies.
 
+To install the skill itself into your agent (Claude Code, Devin, Cursor, …):
+
+```bash
+npx skills add Ariakage/ikat-skill
+```
+
 ## What it produces
 
 ```

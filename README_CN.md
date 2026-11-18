@@ -30,6 +30,12 @@ npm i -g ikat-cli                 # 或全局安装 → `ikat init`
 
 需要 Node ≥ 20，零运行时依赖。
 
+把 skill 装进你的 agent（Claude Code、Devin、Cursor……）：
+
+```bash
+npx skills add Ariakage/ikat-skill
+```
+
 ## 产物结构
 
 ```
