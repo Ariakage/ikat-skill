@@ -36,9 +36,11 @@ architecture diagram of the repo.
 Layout (planned — files that don't exist yet are intent, not fact):
 
 ```
-SKILL.md    # skill entry point: triggers, init/orient/diagram workflows
-AGENTS.md   # this file — contributor conventions
-src/        # TypeScript CLI source (pending)
+SKILL.md           # skill entry point: triggers, workflows, CLI contract
+AGENTS.md          # this file — contributor conventions
+docs/design.md     # confirmed decisions + reference analysis + open items
+docs/progress.md   # milestone tracker + decision log — keep current
+src/               # TypeScript CLI source (pending)
 ```
 
 ## Getting started
