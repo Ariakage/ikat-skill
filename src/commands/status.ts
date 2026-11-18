@@ -1,10 +1,15 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { headSha, topLevel } from "../git.js";
-import { ikatPath, readMeta } from "../store.js";
+import { FORMAT, ikatPath, readMeta } from "../store.js";
 
-export async function runStatus(target: string): Promise<number> {
-  const abs = path.resolve(target);
+export interface StatusOptions {
+  target: string;
+  json: boolean;
+}
+
+export async function runStatus(opts: StatusOptions): Promise<number> {
+  const abs = path.resolve(opts.target);
   const root = topLevel(abs) ?? abs;
   const meta = await readMeta(root);
   if (!meta) {
@@ -12,7 +17,16 @@ export async function runStatus(target: string): Promise<number> {
     return 1;
   }
   const head = headSha(root);
-  const fresh = head !== null && head === meta.head;
+  const oldFormat = meta.format !== FORMAT;
+  const fresh = !oldFormat && head !== null && head === meta.head;
+  const state =
+    meta.head === null
+      ? "no-git"
+      : oldFormat
+        ? `old-format (${meta.format} → ${FORMAT}; run \`ikat sync\`)`
+        : fresh
+          ? "fresh"
+          : `stale (indexed ${meta.head.slice(0, 8)}, HEAD ${head?.slice(0, 8)})`;
   const digestSize = await fs
     .stat(ikatPath(root, "digest.md"))
     .then((s) => `${(s.size / 1024).toFixed(1)} KB`)
@@ -20,13 +34,15 @@ export async function runStatus(target: string): Promise<number> {
   const counts = Object.entries(meta.counts)
     .map(([k, n]) => `${k} ${n}`)
     .join(" · ");
+
+  if (opts.json) {
+    process.stdout.write(
+      `${JSON.stringify({ root, version: meta.toolVersion, format: meta.format, fresh, head, indexedHead: meta.head, counts: meta.counts, digestBytes: meta.digestBytes, generatedAt: meta.generatedAt }, null, 2)}\n`,
+    );
+    return 0;
+  }
   process.stdout.write(
-    [
-      `ikat ${meta.toolVersion} · ${root}`,
-      `state  · ${meta.head === null ? "no git" : fresh ? "fresh" : `stale (indexed ${meta.head.slice(0, 8)}, HEAD ${head?.slice(0, 8)})`}`,
-      `files  · ${counts}`,
-      `digest · ${digestSize} · generated ${meta.generatedAt}`,
-    ].join("\n") + "\n",
+    `ikat ${meta.toolVersion} · ${root}\nstate  · ${state}\nfiles  · ${counts}\ndigest · ${digestSize} · generated ${meta.generatedAt}\n`,
   );
-  return fresh || meta.head === null ? 0 : 2;
+  return 0;
 }

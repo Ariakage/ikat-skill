@@ -1,13 +1,13 @@
 # ikat — Progress
 
-Current phase: **M1 done — L0 skeleton works end-to-end**.
+Current phase: **M2 done — drill-down + incremental sync**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
 
 - [x] **M1 — skeleton end-to-end**: `init` + inventory + extraction +
   `index.json` + `digest.md` render + AGENTS.md marker. L0 usable.
-- [ ] **M2 — drill-down + drift**: `file` / `refs` / `status` / `sync`,
+- [x] **M2 — drill-down + drift**: `file` / `refs` / `status` / `sync`,
   hash-based staleness.
 - [ ] **M3 — entries**: `entries.txt` store, `put` / `enrich` validation,
   merged digest render.
@@ -27,6 +27,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `ef1948a` | Probe fallback chain; markitdown lazy document pipeline |
 | 2026-11-19 | `def22a5` | Design + progress docs recorded |
 | 2026-11-19 | `5c092b2` | M1: CLI scaffold + init/status/digest/uninit; package `ikat-cli` |
+| 2026-11-19 | (pending) | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
 
 ## Confirmed (do not re-litigate)
 
@@ -57,6 +58,22 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 - Verified: 44 vitest cases, `tsc --noEmit`, biome clean, tsup build;
   dogfooded on a fixture repo and on this repo itself.
 
+## Implemented in M2
+
+- `ikat file <path>` — metadata card (role/lang/size/hash/rank/doc/
+  exports/imports/imported-by) + line-numbered excerpt (default 100,
+  `--lines a-b`, `--full` ≤4000) + near-match suggestions.
+- `ikat refs <path>` — out/in/ext edge listing; `--json`.
+- `ikat sync` — incremental: entries with unchanged size+mtime are reused
+  verbatim (raw `specs` persist in index.json so edges re-resolve without
+  re-reading); reports unchanged/refreshed/added/removed.
+- `ikat status --json` — machine-readable meta; stale now exits 0 per
+  contract (2 = misuse only). Old-format detection included.
+- `index.json` entries gained `mtime` + `specs` (additive, format stays 1;
+  spec-less old entries rebuild once on first sync).
+- Verified: 54 vitest cases incl. tmp-repo integration tests; dogfooded
+  on this repo (31→1 refreshed drift detection, edge re-resolution).
+
 ## Open (implementation-time decisions)
 
 - Exact `entries.txt` schema and FRAS field budgets (M3)
@@ -67,5 +84,5 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Next action
 
-M2: `ikat file <path>` metadata card + bounded excerpts, `ikat refs <path>`
-in/out edges, `ikat sync` incremental hash-drift re-index.
+M3: `entries.txt` store + `ikat put`/`enrich` overlay validation + merged
+digest render (L1 agent-authored entries).

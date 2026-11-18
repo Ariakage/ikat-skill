@@ -1,28 +1,11 @@
-import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
 import path from "node:path";
 import { renderDigest } from "../digest.js";
-import {
-  buildResolveCtx,
-  extractDoc,
-  extractExports,
-  extractImportSpecs,
-  resolveSpec,
-} from "../extract.js";
-import { headSha, topLevel } from "../git.js";
-import { langFor, PROSE_EXTS } from "../langs.js";
+import { topLevel } from "../git.js";
 import { applyMarker, ensureExclude, gitDir } from "../marker.js";
+import { buildEntry, buildIndex, resolveAllEdges } from "../pipeline.js";
 import { computeRanks } from "../rank.js";
-import {
-  classify,
-  detectPurpose,
-  extOf,
-  type FileEntry,
-  inventory,
-  MAX_EXTRACT_BYTES,
-  MAX_HASH_BYTES,
-} from "../scan.js";
-import { FORMAT, type RepoIndex, VERSION, writeArtifacts } from "../store.js";
+import { type FileEntry, inventory } from "../scan.js";
+import { FORMAT, VERSION, writeArtifacts } from "../store.js";
 
 export interface InitOptions {
   path: string;
@@ -31,77 +14,9 @@ export interface InitOptions {
   quiet: boolean;
 }
 
-const SHA_TAIL = 12;
-
-async function buildEntry(
-  root: string,
-  rel: string,
-): Promise<FileEntry | null> {
-  const abs = path.join(root, rel);
-  let st: Awaited<ReturnType<typeof fs.stat>>;
-  try {
-    st = await fs.stat(abs);
-  } catch {
-    return null; // listed but vanished
-  }
-  if (!st.isFile()) return null;
-  const lang = langFor(rel);
-  const role = classify(rel, { hasLang: !!lang });
-  const entry: FileEntry = {
-    path: rel,
-    size: st.size,
-    role,
-    lang: lang?.name ?? null,
-    hash: null,
-    oversized: st.size > MAX_EXTRACT_BYTES,
-    imports: [],
-    external: [],
-    exports: [],
-    doc: null,
-    rank: 0,
-  };
-  if (st.size > MAX_HASH_BYTES) return entry;
-  const extractable =
-    !entry.oversized &&
-    (lang !== null || (role === "document" && PROSE_EXTS.has(extOf(rel))));
-  try {
-    if (extractable) {
-      const buf = await fs.readFile(abs);
-      if (buf.includes(0)) {
-        entry.oversized = true; // binary masquerading as text; hashed only
-      } else {
-        entry.hash = createHash("sha1")
-          .update(buf)
-          .digest("hex")
-          .slice(0, SHA_TAIL);
-        const text = buf.toString("utf8");
-        if (lang) {
-          entry.doc = extractDoc(text, lang.doc ?? "slash");
-          entry.exports = extractExports(text, lang);
-          (entry as { _specs?: string[] })._specs = extractImportSpecs(
-            text,
-            lang,
-          );
-        } else {
-          entry.doc = extractDoc(text, "prose");
-        }
-      }
-    } else {
-      entry.hash = createHash("sha1")
-        .update(await fs.readFile(abs))
-        .digest("hex")
-        .slice(0, SHA_TAIL);
-    }
-  } catch {
-    /* unreadable file: keep inventory row without hash */
-  }
-  return entry;
-}
-
 export async function runInit(opts: InitOptions): Promise<number> {
   const abs = path.resolve(opts.path);
-  const tl = topLevel(abs);
-  const root = tl ?? abs;
+  const root = topLevel(abs) ?? abs;
   const log = (s: string) => {
     if (!opts.quiet) process.stdout.write(`${s}\n`);
   };
@@ -118,62 +33,12 @@ export async function runInit(opts: InitOptions): Promise<number> {
     if (e) entries.push(e);
   }
 
-  // resolve raw specifiers → internal paths / external names
-  const ctx = buildResolveCtx(entries.map((e) => e.path));
-  for (const e of entries) {
-    const specs = (e as { _specs?: string[] })._specs ?? [];
-    delete (e as { _specs?: string[] })._specs;
-    const dir = e.path.includes("/")
-      ? e.path.slice(0, e.path.lastIndexOf("/"))
-      : "";
-    for (const spec of specs) {
-      const r = resolveSpec(e.lang ?? "", spec, dir, ctx);
-      if (r && "internal" in r) e.imports.push(r.internal);
-      else if (r && "external" in r) e.external.push(r.external);
-    }
-    e.imports = [...new Set(e.imports)].sort();
-    e.external = [...new Set(e.external)].sort();
-  }
-
+  resolveAllEdges(entries);
   computeRanks(entries);
-
-  const stats = {
-    files: entries.length,
-    edges: entries.reduce((n, e) => n + e.imports.length, 0),
-    langs: Object.fromEntries(
-      [
-        ...entries.reduce((m, e) => {
-          if (e.lang) m.set(e.lang, (m.get(e.lang) ?? 0) + 1);
-          return m;
-        }, new Map<string, number>()),
-      ].sort(),
-    ),
-    roles: Object.fromEntries(
-      [
-        ...entries.reduce(
-          (m, e) => m.set(e.role, (m.get(e.role) ?? 0) + 1),
-          new Map<string, number>(),
-        ),
-      ].sort(),
-    ),
-  };
-
-  const index: RepoIndex = {
-    format: FORMAT,
-    tool: "ikat",
-    toolVersion: VERSION,
-    generatedAt: new Date().toISOString(),
-    repo: {
-      name: path.basename(root),
-      root,
-      head: headSha(root),
-      purpose: await detectPurpose(root, new Set(paths)),
-    },
-    stats,
-    files: entries,
-  };
-
+  const index = await buildIndex(root, entries, paths);
+  const stats = index.stats;
   const digest = renderDigest(index);
+
   const gd = await gitDir(root);
   const tracked = opts.tracked || !gd;
   let excludeStatus: "added" | "present" | "tracked" | "none" = "none";

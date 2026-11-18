@@ -24,10 +24,13 @@ export type Role =
 export interface FileEntry {
   path: string;
   size: number;
+  mtime: number;
   role: Role;
   lang: string | null;
   hash: string | null;
   oversized: boolean;
+  /** raw module specifiers as written (needed to re-resolve on sync) */
+  specs: string[];
   imports: string[];
   external: string[];
   exports: string[];

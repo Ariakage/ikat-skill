@@ -29,10 +29,10 @@ architecture diagram of the repo.
 - **Toolchain**: TypeScript, zero-dependency core (`node:util` `parseArgs`),
   Node ≥ 20, single-file ESM bundle. No model calls inside the CLI, no native
   modules — it must install wherever an agent runs.
-- **Status**: M1 implemented — `init`/`status`/`digest`/`uninit` produce a
-  deterministic L0 index (`.ikat/index.json` + `digest.md` + `meta.json`),
-  AGENTS.md marker, and `.git/info/exclude` wiring. Entry/diagram/probe
-  layers are not built yet; `SKILL.md` remains the contract, flag deviations.
+- **Status**: M2 implemented — `init`/`sync`/`status`/`digest`/`file`/
+  `refs`/`uninit` cover the deterministic L0 index lifecycle (inventory →
+  extraction → edges → digest → incremental refresh). Entries/diagram/
+  probe layers are not built yet; `SKILL.md` remains the contract.
 
 Layout:
 
@@ -42,7 +42,9 @@ AGENTS.md          # this file — contributor conventions
 docs/design.md     # confirmed decisions + reference analysis + open items
 docs/progress.md   # milestone tracker + decision log — keep current
 src/cli.ts         # arg dispatch (parseArgs, zero deps)
-src/commands/      # init / status / digest / uninit
+src/commands/      # init / sync / status / digest / file / refs / uninit
+src/pipeline.ts    # shared scan→extract→resolve→index pipeline
+src/paths.ts       # repo-root + arg→repo-path resolution
 src/scan.ts        # inventory, role classify, purpose detection
 src/langs.ts       # per-language extraction table (regex, v1)
 src/extract.ts     # doc-comment/import/export extraction + spec resolution
