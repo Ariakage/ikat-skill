@@ -29,10 +29,9 @@ architecture diagram of the repo.
 - **Toolchain**: TypeScript, zero-dependency core (`node:util` `parseArgs`),
   Node ≥ 20, single-file ESM bundle. No model calls inside the CLI, no native
   modules — it must install wherever an agent runs.
-- **Status**: M3 implemented — L0 lifecycle (init/sync/file/refs/status)
-  plus L1 entries (`put`/`enrich`, `entries.txt` FRAS overlays merged
-  into the digest). Diagram and media-probe layers are not built yet;
-  `SKILL.md` remains the contract.
+- **Status**: M4 implemented — L0 lifecycle + L1 entries +
+  `diagram --draft` Mermaid baseline. Media probe, `convert`, and
+  `doctor` are not built yet; `SKILL.md` remains the contract.
 
 Layout:
 

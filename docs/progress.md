@@ -1,6 +1,6 @@
 # ikat — Progress
 
-Current phase: **M3 done — L1 entries (FRAS overlays) live**.
+Current phase: **M4 done — `diagram --draft` Mermaid baseline live**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
@@ -11,7 +11,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   hash-based staleness.
 - [x] **M3 — entries**: `entries.txt` store, `put` / `enrich` validation,
   merged digest render.
-- [ ] **M4 — diagram**: `diagram --draft` baseline + marker/docs polish.
+- [x] **M4 — diagram**: `diagram --draft` baseline + marker/docs polish.
 - [ ] **M5 — formats + hardening**: media probe chain, markitdown pipeline,
   doctor, tests.
 
@@ -29,6 +29,7 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `5c092b2` | M1: CLI scaffold + init/status/digest/uninit; package `ikat-cli` |
 | 2026-11-19 |  `16898df` | M2: file/refs/sync/status --json; index stores specs+mtime for incremental reuse |
 | 2026-11-19 | `5f43d23` | M3: entries.txt store + put/enrich + merged digest; live-hash binding |
+| 2026-11-19 | (pending) | M4: diagram --draft writes .ikat/diagram.mmd (ranked nodes, dir clusters, import edges) |
 
 ## Confirmed (do not re-litigate)
 
@@ -101,14 +102,31 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   put→enrich→sync→status integration on tmp repos; dogfooded on this
   repo (entries 3/3 fresh 100%).
 
+## Implemented in M4
+
+- `ikat diagram --draft` writes `.ikat/diagram.mmd`: `flowchart LR`,
+  nodes = top-24 ranked files of diagram-worthy roles
+  (entry/route/service/store/src — tests/config/assets/docs excluded),
+  clustered by parent directory into subgraphs, root files unclustered,
+  labels = fresh entry F > doc > filename (path always shown), edges =
+  resolved imports between shown nodes only (caller owns the edge).
+- `ikat diagram` (no flag) prints the current `.mmd`; missing →
+  exit 1 with a `--draft` hint. `meta.json` tracks `diagramBytes`.
+- `diagram.mmd` is a render: `--draft` regenerates; agent edits live in
+  the same file and are only overwritten by an explicit `--draft`.
+- Verified: 74 vitest cases incl. diagram unit tests (clustering, edge
+  filtering, label precedence, escaping, node cap); dogfooded on this
+  repo — 22 nodes / 68 edges / 2 clusters.
+
 ## Open (implementation-time decisions)
 
 - Enrich queue ordering beyond rank (subsystem focus, git-recent)
 - tsconfig `paths` / babel alias resolution for JS/TS imports (M2+?)
 - Monorepo/multi-root behavior; max-repo performance tuning
-- Mermaid draft layout strategy (M4)
+- Entry-layer clustering option for diagram draft (currently directory)
 
 ## Next action
 
-M4: `ikat diagram --draft` — deterministic Mermaid baseline (directory
-clusters + real import edges + doc labels) written to `.ikat/diagram.mmd`.
+M5: media probe fallback chain (magic bytes → file → ffprobe → exiftool/
+pdfinfo → extension), `ikat convert` via markitdown with hash-bound
+`.ikat/converted/` cache, `ikat doctor` environment probe.
