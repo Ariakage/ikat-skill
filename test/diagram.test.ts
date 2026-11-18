@@ -105,4 +105,34 @@ describe("renderDiagram", () => {
     const { nodes } = renderDiagram(idx(files), new Map());
     expect(nodes).toBe(24);
   });
+
+  it("always includes the highest-ranked hub (rank = score, bigger wins)", () => {
+    // regression: byRank must sort descending — a hub imported by many
+    // low-ranked leaves scores highest and must seed the diagram
+    const hub = fe({ path: "src/hub.ts", rank: 400 });
+    const leaves = Array.from({ length: 30 }, (_, i) =>
+      fe({
+        path: `src/leaf${String(i).padStart(2, "0")}.ts`,
+        rank: i + 1,
+        imports: ["src/hub.ts"],
+      }),
+    );
+    const { mmd, edges } = renderDiagram(idx([hub, ...leaves]), new Map());
+    expect(mmd).toContain('n_src_hub_ts["src/hub.ts');
+    expect(edges).toBeGreaterThan(0);
+  });
+
+  it("reserves component seeds for top-ranked nodes outside the first component", () => {
+    // dense component A (10 files, all mid-rank) + isolated high-rank B
+    const a = Array.from({ length: 10 }, (_, i) =>
+      fe({
+        path: `a/f${i}.ts`,
+        rank: 50,
+        imports: i === 0 ? [] : ["a/f0.ts"],
+      }),
+    );
+    const star = fe({ path: "b/star.ts", rank: 200 });
+    const { mmd } = renderDiagram(idx([...a, star]), new Map());
+    expect(mmd).toContain('n_b_star_ts["b/star.ts');
+  });
 });

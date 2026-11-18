@@ -9,6 +9,9 @@ const NODE_ROLES = new Set(["entry", "route", "service", "store", "src"]);
 
 const MAX_NODES = 24;
 const COMPONENT_CAP = 10;
+/** Top-ranked nodes always get a component seed — without a floor, hubs
+ * whose neighbours rank low can lose all slots to frontier growth. */
+const GUARANTEED_SEEDS = 8;
 const LABEL_MAX = 44;
 
 const mmdId = (p: string): string => `n_${p.replace(/[^a-zA-Z0-9]/g, "_")}`;
@@ -43,7 +46,8 @@ const clusterOf = (p: string): string | null => {
 function pickNodes(files: FileEntry[]): FileEntry[] {
   const byRank = files
     .filter((f) => NODE_ROLES.has(f.role))
-    .sort((a, b) => a.rank - b.rank);
+    // rank is a score — higher = more important (in-degree dominant)
+    .sort((a, b) => b.rank - a.rank || a.path.localeCompare(b.path));
   const importers = new Map<string, string[]>();
   for (const f of byRank) {
     for (const to of f.imports) {
@@ -64,6 +68,12 @@ function pickNodes(files: FileEntry[]): FileEntry[] {
       (importers.get(f.path) ?? []).some((t) => set.has(t));
   const touchesFrontier = touchesSet(frontier);
   const touchesShown = touchesSet(inShown);
+  let gi = 0;
+  const guaranteedEnd = Math.min(GUARANTEED_SEEDS, byRank.length);
+  const nextGuaranteed = (): FileEntry | undefined => {
+    while (gi < guaranteedEnd && inShown.has(byRank[gi]!.path)) gi++;
+    return gi < guaranteedEnd ? byRank[gi++] : undefined;
+  };
   while (shown.length < MAX_NODES) {
     const expand =
       frontier.size > 0 && frontier.size < COMPONENT_CAP
@@ -71,6 +81,7 @@ function pickNodes(files: FileEntry[]): FileEntry[] {
         : undefined;
     const pick =
       expand ??
+      nextGuaranteed() ??
       byRank.find((f) => !inShown.has(f.path) && !touchesShown(f)) ??
       byRank.find((f) => !inShown.has(f.path));
     if (!pick) break;
