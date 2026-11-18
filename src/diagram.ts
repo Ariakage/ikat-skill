@@ -8,6 +8,7 @@ import type { RepoIndex } from "./store.js";
 const NODE_ROLES = new Set(["entry", "route", "service", "store", "src"]);
 
 const MAX_NODES = 24;
+const COMPONENT_CAP = 10;
 const LABEL_MAX = 44;
 
 const mmdId = (p: string): string => `n_${p.replace(/[^a-zA-Z0-9]/g, "_")}`;
@@ -34,6 +35,53 @@ const clusterOf = (p: string): string | null => {
   return dir === "." ? null : dir;
 };
 
+/** Greedy connected-first pick: the highest-ranked node seeds a component,
+ * then each step takes the highest-ranked node that shares an edge with the
+ * shown set. Pure rank picks hubs whose neighbours are all low-rank leaves
+ * → edge-less diagram; this yields real components (hub + its top
+ * neighbours), starting a new component when the frontier empties. */
+function pickNodes(files: FileEntry[]): FileEntry[] {
+  const byRank = files
+    .filter((f) => NODE_ROLES.has(f.role))
+    .sort((a, b) => a.rank - b.rank);
+  const importers = new Map<string, string[]>();
+  for (const f of byRank) {
+    for (const to of f.imports) {
+      const arr = importers.get(to) ?? [];
+      arr.push(f.path);
+      importers.set(to, arr);
+    }
+  }
+  const shown: FileEntry[] = [];
+  const inShown = new Set<string>();
+  /** current component's members — expansion may only grow the frontier,
+   * otherwise old components keep absorbing slots past the cap */
+  const frontier = new Set<string>();
+  const touchesSet =
+    (set: Set<string>) =>
+    (f: FileEntry): boolean =>
+      f.imports.some((t) => set.has(t)) ||
+      (importers.get(f.path) ?? []).some((t) => set.has(t));
+  const touchesFrontier = touchesSet(frontier);
+  const touchesShown = touchesSet(inShown);
+  while (shown.length < MAX_NODES) {
+    const expand =
+      frontier.size > 0 && frontier.size < COMPONENT_CAP
+        ? byRank.find((f) => !inShown.has(f.path) && touchesFrontier(f))
+        : undefined;
+    const pick =
+      expand ??
+      byRank.find((f) => !inShown.has(f.path) && !touchesShown(f)) ??
+      byRank.find((f) => !inShown.has(f.path));
+    if (!pick) break;
+    if (!touchesShown(pick) || frontier.size >= COMPONENT_CAP) frontier.clear();
+    frontier.add(pick.path);
+    inShown.add(pick.path);
+    shown.push(pick);
+  }
+  return shown;
+}
+
 /** Render the deterministic "ugly but never wrong" baseline: ranked modules
  * clustered by directory, labels F > doc > filename, edges = resolved
  * imports between shown nodes only (caller owns the edge). */
@@ -41,10 +89,7 @@ export function renderDiagram(
   index: RepoIndex,
   entries: Map<string, AuthoredEntry>,
 ): { mmd: string; nodes: number; edges: number; clusters: number } {
-  const shown = index.files
-    .filter((f) => NODE_ROLES.has(f.role))
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, MAX_NODES);
+  const shown = pickNodes(index.files);
   const shownSet = new Set(shown.map((f) => f.path));
 
   const clusters = new Map<string, FileEntry[]>();
