@@ -334,13 +334,101 @@ const IMG_EXTS = new Set([
   ".bmp",
 ]);
 
+/** External-tool work deferred for one batched flush — spawning a
+ * process per file dominates init time at scale (2.8k execs ≈ 20 s on
+ * an 11.5k-file repo), so callers collect these queues during the
+ * per-file pass and drain them once via runProbeBatch. */
+export interface ProbeBatch {
+  ffprobe: { abs: string; info: ProbeInfo }[];
+  pdfinfo: { abs: string; info: ProbeInfo }[];
+  exiftool: { abs: string; info: ProbeInfo }[];
+  file: { abs: string; info: ProbeInfo }[];
+}
+
+export const newProbeBatch = (): ProbeBatch => ({
+  ffprobe: [],
+  pdfinfo: [],
+  exiftool: [],
+  file: [],
+});
+
+const chunks = <T>(items: T[], n: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += n) out.push(items.slice(i, i + n));
+  return out;
+};
+
+/** Drain deferred probe queues: file(1) and exiftool go out in argv
+ * batches (one process per ~400 paths), ffprobe/pdfinfo run per file on
+ * a small concurrency pool. Output is joined back by arg order (file -b)
+ * or SourceFile (exiftool -json). */
+export async function runProbeBatch(batch: ProbeBatch): Promise<void> {
+  for (const chunk of chunks(batch.exiftool, 400)) {
+    const r = await run(
+      "exiftool",
+      ["-json", "-ImageWidth", "-ImageHeight", ...chunk.map((c) => c.abs)],
+      60_000,
+    );
+    if (!r) continue;
+    try {
+      const arr = JSON.parse(r.stdout) as Record<string, unknown>[];
+      const bySrc = new Map(arr.map((j) => [String(j.SourceFile), j]));
+      for (const c of chunk) {
+        const j = bySrc.get(c.abs);
+        if (j?.ImageWidth && j?.ImageHeight) {
+          c.info.dims = `${j.ImageWidth}x${j.ImageHeight}`;
+          c.info.tool = "exiftool";
+        }
+      }
+    } catch {
+      /* malformed tool output — keep builtin data */
+    }
+  }
+  for (const chunk of chunks(batch.file, 400)) {
+    const r = await run("file", ["-b", ...chunk.map((c) => c.abs)], 30_000);
+    const lines = r?.stdout.split("\n") ?? [];
+    chunk.forEach((c, i) => {
+      const t = lines[i]?.trim();
+      if (t) {
+        c.info.type = t.slice(0, 160);
+        if (c.info.tool === "ext" || c.info.tool === "builtin")
+          c.info.tool = "file";
+      }
+    });
+  }
+  const pool = async <T>(
+    items: T[],
+    n: number,
+    fn: (x: T) => Promise<void>,
+  ) => {
+    let i = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(n, items.length) }, async () => {
+        for (;;) {
+          const x = items[i++];
+          if (x === undefined) break;
+          await fn(x);
+        }
+      }),
+    );
+  };
+  await pool(batch.ffprobe, 8, async (c) => {
+    if (await probeFfprobe(c.abs, c.info)) c.info.tool = "ffprobe";
+  });
+  await pool(batch.pdfinfo, 8, async (c) => {
+    if (await probePdfinfo(c.abs, c.info)) c.info.tool = "pdfinfo";
+  });
+}
+
 /** Probe one file: builtin header → ffprobe (A/V) → pdfinfo (pdf) →
  * exiftool → file(1) → extension fallback. Missing tools skip silently;
- * the floor is always format + size. */
+ * the floor is always format + size. Pass `batch` to defer every
+ * external call into runProbeBatch queues instead of spawning per file. */
 export async function probeFile(
   abs: string,
   rel: string,
   repoFiles: Set<string>,
+  batch?: ProbeBatch,
 ): Promise<ProbeInfo> {
   const st = await fs.stat(abs);
   const info: ProbeInfo = {
@@ -383,6 +471,15 @@ export async function probeFile(
   }
 
   const ext = extOf(rel);
+  if (batch) {
+    if (AV_EXTS.has(ext) && which("ffprobe")) batch.ffprobe.push({ abs, info });
+    if (info.format === "pdf" && which("pdfinfo"))
+      batch.pdfinfo.push({ abs, info });
+    if (!info.dims && !info.duration && IMG_EXTS.has(ext) && which("exiftool"))
+      batch.exiftool.push({ abs, info });
+    if (which("file")) batch.file.push({ abs, info });
+    return info;
+  }
   if (AV_EXTS.has(ext) && which("ffprobe")) {
     if (await probeFfprobe(abs, info)) info.tool = "ffprobe";
   }
