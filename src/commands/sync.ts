@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { renderDigest } from "../digest.js";
+import { readEntries, writeEntries } from "../entries.js";
 import { topLevel } from "../git.js";
 import { gitDir } from "../marker.js";
 import { buildEntry, buildIndex, resolveAllEdges } from "../pipeline.js";
@@ -76,7 +77,20 @@ export async function runSync(opts: SyncOptions): Promise<number> {
   resolveAllEdges(entries);
   computeRanks(entries);
   const index = await buildIndex(root, entries, paths);
-  const digest = renderDigest(index);
+
+  // entries for vanished files are orphans — drop and report (stale ones
+  // stay visible via hash drift, which is computed at read time)
+  const authored = await readEntries(root);
+  let orphaned = 0;
+  for (const p of [...authored.keys()]) {
+    if (!current.has(p)) {
+      authored.delete(p);
+      orphaned++;
+    }
+  }
+  if (orphaned) await writeEntries(root, authored);
+
+  const digest = renderDigest(index, authored);
   const gd = await gitDir(root);
   await writeArtifacts(root, index, digest, {
     format: FORMAT,
@@ -90,7 +104,7 @@ export async function runSync(opts: SyncOptions): Promise<number> {
   });
 
   log(
-    `sync · ${report.unchanged} unchanged · ${report.refreshed} refreshed · ${report.added} added · ${report.removed} removed`,
+    `sync · ${report.unchanged} unchanged · ${report.refreshed} refreshed · ${report.added} added · ${report.removed} removed${orphaned ? ` · ${orphaned} orphaned entries dropped` : ""}`,
   );
   log(
     `edges · ${index.stats.edges} internal · files ${index.stats.files} · index ${index.repo.head ? index.repo.head.slice(0, 8) : "no-git"}`,

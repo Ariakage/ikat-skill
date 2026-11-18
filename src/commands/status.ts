@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { entryState, readEntries } from "../entries.js";
 import { headSha, topLevel } from "../git.js";
-import { FORMAT, ikatPath, readMeta } from "../store.js";
+import { FORMAT, ikatPath, readIndex, readMeta } from "../store.js";
 
 export interface StatusOptions {
   target: string;
@@ -16,6 +17,12 @@ export async function runStatus(opts: StatusOptions): Promise<number> {
     process.stderr.write(`ikat: no index at ${root} — run \`ikat init\`\n`);
     return 1;
   }
+  const index = await readIndex(root);
+  const authored = await readEntries(root);
+  const freshEntries = index
+    ? [...authored.values()].filter((e) => entryState(e, index) === "fresh")
+        .length
+    : 0;
   const head = headSha(root);
   const oldFormat = meta.format !== FORMAT;
   const fresh = !oldFormat && head !== null && head === meta.head;
@@ -37,12 +44,15 @@ export async function runStatus(opts: StatusOptions): Promise<number> {
 
   if (opts.json) {
     process.stdout.write(
-      `${JSON.stringify({ root, version: meta.toolVersion, format: meta.format, fresh, head, indexedHead: meta.head, counts: meta.counts, digestBytes: meta.digestBytes, generatedAt: meta.generatedAt }, null, 2)}\n`,
+      `${JSON.stringify({ root, version: meta.toolVersion, format: meta.format, fresh, head, indexedHead: meta.head, counts: meta.counts, entries: { total: authored.size, fresh: freshEntries }, digestBytes: meta.digestBytes, generatedAt: meta.generatedAt }, null, 2)}\n`,
     );
     return 0;
   }
+  const entriesLine = authored.size
+    ? `entries · ${freshEntries}/${authored.size} fresh (${Math.round((freshEntries / authored.size) * 100)}%)\n`
+    : "";
   process.stdout.write(
-    `ikat ${meta.toolVersion} · ${root}\nstate  · ${state}\nfiles  · ${counts}\ndigest · ${digestSize} · generated ${meta.generatedAt}\n`,
+    `ikat ${meta.toolVersion} · ${root}\nstate  · ${state}\nfiles  · ${counts}\n${entriesLine}digest · ${digestSize} · generated ${meta.generatedAt}\n`,
   );
   return 0;
 }

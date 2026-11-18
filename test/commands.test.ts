@@ -3,8 +3,10 @@ import { promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runEnrich } from "../src/commands/enrich.js";
 import { runFile } from "../src/commands/file.js";
 import { runInit } from "../src/commands/init.js";
+import { runPut } from "../src/commands/put.js";
 import { runRefs } from "../src/commands/refs.js";
 import { runStatus } from "../src/commands/status.js";
 import { runSync } from "../src/commands/sync.js";
@@ -186,5 +188,64 @@ describe("sync", () => {
     expect(await runSync({ path: bare, quiet: true })).toBe(1);
     err.mockRestore();
     await fs.rm(bare, { recursive: true, force: true });
+  });
+});
+
+describe("put / enrich", () => {
+  it("stores a validated entry and queues the rest", async () => {
+    await init();
+    outSpy.mockClear();
+    expect(
+      await runPut({
+        target: dir,
+        file: "src/lib/a.ts",
+        entry: "S:never delete; hot path",
+      }),
+    ).toBe(0);
+    expect(out()).toContain("stored src/lib/a.ts [C9");
+    // enrich queue now excludes a.ts
+    outSpy.mockClear();
+    expect(
+      await runEnrich({
+        target: dir,
+        limit: 10,
+        onlyStale: false,
+        json: false,
+      }),
+    ).toBe(0);
+    const s = out();
+    expect(s).toContain("src/index.ts");
+    expect(s).toContain("src/lib/b.ts");
+    expect(s).not.toContain("src/lib/a.ts [");
+  });
+  it("rejects contract violations without storing", async () => {
+    await init();
+    const err = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = await runPut({
+      target: dir,
+      file: "src/lib/a.ts",
+      entry: `F:${"x".repeat(300)}`,
+    });
+    expect(code).toBe(1);
+    expect(err.mock.calls.map((c) => String(c[0])).join("")).toContain(
+      "F exceeds",
+    );
+    err.mockRestore();
+    // nothing stored → file absent
+    await expect(
+      fs.readFile(path.join(dir, ".ikat/entries.txt"), "utf8"),
+    ).rejects.toThrow();
+  });
+  it("marks entries stale after content drift", async () => {
+    await init();
+    await runPut({ target: dir, file: "src/lib/a.ts", entry: "S:keep" });
+    await fs.writeFile(path.join(dir, "src/lib/a.ts"), "export const a = 2;\n");
+    await runSync({ path: dir, quiet: true });
+    outSpy.mockClear();
+    await runEnrich({ target: dir, limit: 10, onlyStale: true, json: false });
+    expect(out()).toContain("src/lib/a.ts");
+    expect(out()).toContain("⚠stale");
   });
 });

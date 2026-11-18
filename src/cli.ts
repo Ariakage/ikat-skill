@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { runEnrich } from "./commands/enrich.js";
 import { runFile } from "./commands/file.js";
 import { runInit } from "./commands/init.js";
 import { runDigest, runUninit } from "./commands/misc.js";
+import { runPut } from "./commands/put.js";
 import { runRefs } from "./commands/refs.js";
 import { runStatus } from "./commands/status.js";
 import { runSync } from "./commands/sync.js";
@@ -19,6 +21,8 @@ commands:
   digest [path]   print .ikat/digest.md
   file <path>     metadata card + bounded excerpt          --full · --lines a-b
   refs <path>     imports + reverse importers              --json
+  enrich [path]   entry work queue      --limit n · --only-stale · --json
+  put <path>      validate + store FRAS line (stdin or --entry)
   uninit [path]   remove index, marker, and exclude entry
 
 init flags:
@@ -101,6 +105,40 @@ async function main(): Promise<number> {
         return 2;
       }
       return runRefs({ target: ".", file: target, json: values.json! });
+    }
+    case "enrich": {
+      const { values, positionals } = parseArgs({
+        args: rest,
+        allowPositionals: true,
+        options: {
+          limit: { type: "string" },
+          "only-stale": { type: "boolean", default: false },
+          json: { type: "boolean", default: false },
+        },
+      });
+      const limit = values.limit ? Number(values.limit) : 15;
+      if (!Number.isFinite(limit) || limit < 1) {
+        process.stderr.write(`ikat: --limit expects a positive integer\n`);
+        return 2;
+      }
+      return runEnrich({
+        target: positionals[0] ?? ".",
+        limit,
+        onlyStale: values["only-stale"]!,
+        json: values.json!,
+      });
+    }
+    case "put": {
+      const { values, positionals } = parseArgs({
+        args: rest,
+        allowPositionals: true,
+        options: { entry: { type: "string" } },
+      });
+      return runPut({
+        target: ".",
+        file: positionals[0] ?? null,
+        entry: values.entry ?? null,
+      });
     }
     case "uninit":
       return runUninit(cwdTarget(rest));

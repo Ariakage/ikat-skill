@@ -1,5 +1,6 @@
 import path from "node:path";
 import { renderDigest } from "../digest.js";
+import { readEntries } from "../entries.js";
 import { topLevel } from "../git.js";
 import { applyMarker, ensureExclude, gitDir } from "../marker.js";
 import { buildEntry, buildIndex, resolveAllEdges } from "../pipeline.js";
@@ -37,7 +38,7 @@ export async function runInit(opts: InitOptions): Promise<number> {
   computeRanks(entries);
   const index = await buildIndex(root, entries, paths);
   const stats = index.stats;
-  const digest = renderDigest(index);
+  const digest = renderDigest(index, await readEntries(root));
 
   const gd = await gitDir(root);
   const tracked = opts.tracked || !gd;

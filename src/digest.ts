@@ -1,5 +1,7 @@
+import { promises as fs } from "node:fs";
+import { type AuthoredEntry, entryState, tagString } from "./entries.js";
 import type { FileEntry } from "./scan.js";
-import type { RepoIndex } from "./store.js";
+import { ikatPath, type RepoIndex, readMeta } from "./store.js";
 
 const TREE_DEPTH = 3;
 const TREE_CHILD_CAP = 12;
@@ -72,11 +74,19 @@ export function renderTree(paths: string[]): string[] {
 const fmtImport = (f: FileEntry): string =>
   f.imports.length ? f.imports.join(", ") : "·";
 
+const ENTRIES_CAP = 15;
+
 /** Deterministic digest.md — the single orientation artifact. */
-export function renderDigest(index: RepoIndex): string {
+export function renderDigest(
+  index: RepoIndex,
+  entries: Map<string, AuthoredEntry> = new Map(),
+): string {
   const { files, stats, repo } = index;
   const counts = stats.roles;
   const head = repo.head ? repo.head.slice(0, 8) : "no-git";
+  const fieldOf = (f: FileEntry, key: "F" | "S"): string | null =>
+    entries.get(f.path)?.fields[key] ?? null;
+  const fOf = (f: FileEntry): string | null => fieldOf(f, "F") ?? f.doc;
 
   const core = files
     .filter((f) => f.lang && !LOW_VALUE.has(f.role))
@@ -99,6 +109,27 @@ export function renderDigest(index: RepoIndex): string {
   ).length;
   const oversized = files.filter((f) => f.oversized).length;
   const externals = new Set(files.flatMap((f) => f.external)).size;
+
+  const entryRows = files
+    .filter((f) => entries.has(f.path))
+    .sort((a, b) => b.rank - a.rank || a.path.localeCompare(b.path))
+    .slice(0, ENTRIES_CAP)
+    .map((f) => {
+      const e = entries.get(f.path)!;
+      const stale = entryState(e, index) === "stale" ? " ⚠stale" : "";
+      const parts = (["F", "R", "A", "S"] as const)
+        .filter((k) => e.fields[k])
+        .map((k) => `${k}:${e.fields[k]}`)
+        .join(" | ");
+      return `- \`${f.path}\` [${tagString(e.tag)}]${stale} — ${parts}`;
+    });
+  const freshEntries = [...entries.values()].filter(
+    (e) => entryState(e, index) === "fresh",
+  ).length;
+  const entriesLine =
+    entries.size > 0
+      ? `- entries: ${freshEntries} fresh / ${entries.size} total (${Math.round((freshEntries / entries.size) * 100)}%)`
+      : "- entries: none yet (`ikat enrich` for the queue)";
 
   const roleSummary = [
     [
@@ -125,12 +156,13 @@ export function renderDigest(index: RepoIndex): string {
     "",
     "## Core",
     ...(core.length
-      ? core.map(
-          (f) =>
-            `- \`${f.path}\` (${f.role} · ${kb(f.size)})${f.doc ? ` — ${f.doc}` : ""}`,
-        )
+      ? core.map((f) => {
+          const fText = fOf(f);
+          return `- \`${f.path}\` (${f.role} · ${kb(f.size)})${fText ? ` — ${fText}` : ""}`;
+        })
       : ["- (no source files detected)"]),
     "",
+    ...(entryRows.length ? ["## Entries", ...entryRows, ""] : []),
     "## Source index",
     ...(srcIndexed.length
       ? srcIndexed.map(
@@ -143,8 +175,8 @@ export function renderDigest(index: RepoIndex): string {
     `- indexed ${stats.files} files (${roleSummary})`,
     `- extracted ${extracted} files (imports/exports/doc)${oversized ? ` · skipped ${oversized} oversized` : ""}`,
     `- ${stats.edges} internal edges · ${externals} external packages`,
+    entriesLine,
     `- limits: content ≤1 MB/file · tree depth ≤${TREE_DEPTH} · langs: ${Object.keys(stats.langs).sort().join(", ") || "none"}`,
-    `- L1 entries: none yet (run \`ikat put\` to add; planned M3)`,
   ];
 
   const header = [
@@ -156,4 +188,23 @@ export function renderDigest(index: RepoIndex): string {
   const draft = `${header.join("\n")}\n\n${body.join("\n")}\n`;
   const tokens = Math.ceil(draft.length / 4);
   return `${header.join("\n")} · ≈${tokens} tokens\n\n${body.join("\n")}\n`;
+}
+
+/** Re-render digest.md after authored data (entries) changed without a
+ * full sync — the index itself is untouched. */
+export async function rewriteDigest(
+  root: string,
+  index: RepoIndex,
+  entries: Map<string, AuthoredEntry>,
+): Promise<void> {
+  const digest = renderDigest(index, entries);
+  await fs.writeFile(ikatPath(root, "digest.md"), digest);
+  const meta = await readMeta(root);
+  if (meta) {
+    meta.digestBytes = Buffer.byteLength(digest);
+    await fs.writeFile(
+      ikatPath(root, "meta.json"),
+      `${JSON.stringify(meta, null, 2)}\n`,
+    );
+  }
 }
