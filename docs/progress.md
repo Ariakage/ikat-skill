@@ -1,6 +1,7 @@
 # ikat — Progress
 
-Current phase: **M5 done — probe chain, `convert`, and `doctor` live**.
+Current phase: **v1 complete — M5 done + real-repo acceptance (soyo-harness,
+626 files) passed**.
 Working contract: `SKILL.md` · Decision record: `docs/design.md`
 
 ## Milestones
@@ -31,6 +32,9 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
 | 2026-11-19 | `5f43d23` | M3: entries.txt store + put/enrich + merged digest; live-hash binding |
 | 2026-11-19 | `6d3555a` | M4: diagram --draft writes .ikat/diagram.mmd (ranked nodes, dir clusters, import edges) |
 | 2026-11-19 | `207b3f6` | M5: probe fallback chain + convert (markitdown/uvx) + doctor --verify |
+| 2026-11-19 | `5bbd772` | Rust resolver: anchors, pub use, stem-dir modules (soyo-harness acceptance) |
+| 2026-11-19 | `8913325` | Diagram: connected-component growth + cap (0→34 edges on soyo-harness) |
+| 2026-11-19 | `aa96042` | digest `(none)` label; `.temp/` ignored |
 
 ## Confirmed (do not re-litigate)
 
@@ -152,12 +156,46 @@ Working contract: `SKILL.md` · Decision record: `docs/design.md`
   ffprobe card `320x240 · 2s · h264`, sidecars, zip members, uvx
   fallback converting real HTML.
 
+## Acceptance — soyo-harness (626 files, Rust workspace + desktop)
+
+Cloned `Ariakage/soyo-harness` into `.temp/` and ran the full workflow.
+Findings and fixes:
+
+- `init`: 626 files in ~0.27 s; `sync` (no-op) ~0.10 s. Marker appended
+  cleanly after the repo's existing AGENTS.md content.
+- **Rust resolver was the biggest gap.** `use` extraction missed
+  `pub use`; `crate::`/`self::`/`super::` were labelled external; and
+  stem-dir modules (`credentials.rs` + `credentials/file.rs`) were
+  unreachable. Fixes: broader import regex (pub use), anchor-aware
+  resolver (`crate`→crate-root, `self`/`super`→relative, brace-tail
+  normalization), stem-dir candidate paths, and unresolved
+  internal-style paths now return `null` instead of a false `external`
+  label. Internal edges 315 → **678**, external labels 213 → 132.
+- `//!` inner doc comments kept the `!` — now stripped in `extractDoc`.
+- `refs crates/soyo-core/src/lib.rs`: 47 out / 1 ext / 140 in — the
+  hub picture is correct.
+- `enrich` produced a plausible queue (`[E9S]` lib.rs, runtime, mcp…)
+  with clean doc-derived labels.
+- **Diagram node selection needed rework.** Top-rank alone picked a
+  disconnected set → 0 edges. Iterated: top-60 pool still 1 edge;
+  connected greedy growth flooded 24 slots with one frontend
+  component. Final: seed by rank, grow the frontier only (per-component
+  cap 10), start a new component on exhaustion. Result:
+  24 nodes / 34 edges / 7 clusters — credentials hub, mcp tree, and the
+  desktop `sanitize.ts` fan-in all visible. `lib.rs` still misses the
+  cut (ranked below the frontier seeds); acceptable for a draft
+  baseline, agent edits anyway.
+- `.gitignore` gained `.temp/` so acceptance fixtures stay out of the
+  repo.
+
 ## Open (implementation-time decisions)
 
 - Enrich queue ordering beyond rank (subsystem focus, git-recent)
 - tsconfig `paths` / babel alias resolution for JS/TS imports (M2+?)
 - Monorepo/multi-root behavior; max-repo performance tuning
 - Entry-layer clustering option for diagram draft (currently directory)
+- Diagram: highest-rank `lib.rs` can still lose to frontier seeds —
+  consider a floor guaranteeing the top-N ranked nodes a slot
 
 ## Next action
 
