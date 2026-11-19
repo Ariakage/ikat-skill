@@ -179,6 +179,14 @@ indexing is a one-time cost, staleness checks are nearly free.
 
 ![init scaling — files vs seconds](docs/assets/perf-scaling.png)
 
+## Used by
+
+Repositories running ikat — look for the `<!-- ikat:index -->` block in
+their AGENTS.md:
+
+- [Ariakage/soyo-harness](https://github.com/Ariakage/soyo-harness) —
+  Rust agent-runtime harness; 626 files, 678 internal edges
+
 ## Boundaries
 
 - No model calls inside the CLI. Ever.

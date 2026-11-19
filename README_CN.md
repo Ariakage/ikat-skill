@@ -173,6 +173,13 @@ hash 绑定；漂移时标 `stale` 而不删除。CLI 校验结构与出处—�
 
 ![init 扩展性——文件数与耗时](docs/assets/perf-scaling.png)
 
+## 使用中的仓库
+
+已在用 ikat 的仓库——看它们 AGENTS.md 里的 `<!-- ikat:index -->` 标记：
+
+- [Ariakage/soyo-harness](https://github.com/Ariakage/soyo-harness) —
+  Rust agent runtime harness；626 文件 / 678 条内部边
+
 ## 边界
 
 - CLI 内部永不调用模型。
